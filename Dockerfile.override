@@ -1,0 +1,3 @@
+FROM ORIGIN
+
+RUN apt-get install -y -f postgresql-client

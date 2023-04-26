@@ -1,0 +1,11 @@
+version: "2.4"
+services:
+  backend:
+    build:
+      context: ./openimis-be_py
+      dockerfile: ../Dockerfile
+    image: openimis/backend:${PROJECT_NAME:-dev}
+    volumes:
+      - ./openimis-be_py/:/openimis-be/
+      - ./modules/:/modules/
+    entrypoint: ["tail", "-f", "/dev/null"]
