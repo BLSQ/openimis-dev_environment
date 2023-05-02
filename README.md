@@ -21,13 +21,17 @@ One tool is provided to manage, runs, and uses the dev environment: `run.sh`
   the backend.
 
   bootstrap     bootstraps the development environment
-  prepare_test  prepares the test environment, in particular the database    
+  default       sets the default service to interact with (shell)
+  disable       disables a given service (backend and db can't be disabled)
+  enable        enables a given service (by default db and backend are run)
+  prepare_test  prepares the test environment in backend, in particular the database    
   server        runs the backend server
-  shell         runs an interactive shell
+  settings      reads current settings if any
+  shell         runs an interactive shell on the default service
   status        returns current status of the environment
   stop          stops the environment if running
-  test          runs test for given module
-  workon        switches a module for its local version for development
+  test          runs test for given module in backend
+  workon        switches a module in backend for its local version for development
 ```
 
 ## Documentation

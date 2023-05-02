@@ -2,3 +2,4 @@ openimis-dist_dkr
 openimis-be_py
 modules/*/
 Dockerfile
+openimis-dev.json
