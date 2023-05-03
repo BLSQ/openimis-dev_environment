@@ -15,25 +15,38 @@ Python Backend.
 One tool is provided to manage, runs, and uses the dev environment: `run.sh`
 
 ```bash
-./run.sh
+./run.sh                                                                                                                                                          
 
   Runs command and tools in a containerized environment for the development of
   the backend.
 
-  bootstrap     bootstraps the development environment
-  default       sets the default service to interact with (shell)
-  disable       disables a given service (backend and db can't be disabled)
-  enable        enables a given service (by default db and backend are run)
-  logs          prints the logs for the given service
-  prepare_test  prepares the test environment in backend, in particular the database    
-  refresh       refreshes a service by rebuilding its image and (re)starting it
-  server        runs the backend server
-  settings      reads current settings if any
-  shell         runs an interactive shell on the default service
-  status        returns current status of the environment
-  stop          stops the environment if running
-  test          runs test for given module in backend
-  workon        switches a module in backend for its local version for development
+  ./run.sh COMMAND [parameters]
+
+  COMMANDS:
+
+  bootstrap       bootstraps the development environment.
+  db  [name]      sets and uses the database type (restart if running) or gets
+                  it if nothing passed.
+                  possible values: pgsql,mssql
+  default [name]  sets the default service to interact with (shell) or gets it
+                  if nothing passed.
+  disable <name>  disables a given service (backend and db can't be disabled).
+  enable  <name>  enables a given service (db and backend are mandatory).
+                  possible values: db,backend,frontend,gateway,rabbitmq,restapi,worker
+  enabled         lists enabled services.
+  logs <name>     prints the logs for the given service.
+  prepare_test    prepares the test environment in backend, in particular the
+                  database.
+  refresh <name>  refreshes a service by rebuilding its image and (re)starting
+                  it.
+  server          runs the backend server.
+  settings        reads current settings if any.
+  shell           runs an interactive shell on the default service.
+  status          returns current status of the environment.
+  stop            stops the environment if running.
+  test            runs test for given module in backend.
+  workon <name>   switches a module in backend for its local version for
+                  development.
 ```
 
 ## Documentation

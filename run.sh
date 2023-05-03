@@ -1,31 +1,45 @@
 #!/bin/bash
 
-DOCKER_COMPOSE_COMMAND="docker compose -f docker-compose.yml -f ../docker-compose.yml.local-dev"
 TEST_DB="test_IMIS"
+VALID_DATABASES="pgsql,mssql"
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
 function usage() {
   echo """
   Runs command and tools in a containerized environment for the development of
   the backend.
 
-  bootstrap     bootstraps the development environment
-  default       sets the default service to interact with (shell)
-  disable       disables a given service (backend and db can't be disabled)
-  enable        enables a given service (by default db and backend are run)
-  logs          prints the logs for the given service
-  prepare_test  prepares the test environment in backend, in particular the database    
-  refresh       refreshes a service by rebuilding its image and (re)starting it
-  server        runs the backend server
-  settings      reads current settings if any
-  shell         runs an interactive shell on the default service
-  status        returns current status of the environment
-  stop          stops the environment if running
-  test          runs test for given module in backend
-  workon        switches a module in backend for its local version for development
+  $0 COMMAND [parameters]
+
+  COMMANDS:
+
+  bootstrap       bootstraps the development environment.
+  db  [name]      sets and uses the database type (restart if running) or gets
+                  it if nothing passed.
+                  possible values: ${VALID_DATABASES}
+  default [name]  sets the default service to interact with (shell) or gets it
+                  if nothing passed.
+  disable <name>  disables a given service (backend and db can't be disabled).
+  enable  <name>  enables a given service (db and backend are mandatory).
+                  possible values: $(available_services | tr '\r\n' ',' | sed "s/.$//")
+  enabled         lists enabled services.
+  logs <name>     prints the logs for the given service.
+  prepare_test    prepares the test environment in backend, in particular the
+                  database.
+  refresh <name>  refreshes a service by rebuilding its image and (re)starting
+                  it.
+  server          runs the backend server.
+  settings        reads current settings if any.
+  shell           runs an interactive shell on the default service.
+  status          returns current status of the environment.
+  stop            stops the environment if running.
+  test            runs test for given module in backend.
+  workon <name>   switches a module in backend for its local version for
+                  development.
   """
 }
 
-SETTINGS_FILE="openimis-dev.json"
+SETTINGS_FILE="${SCRIPT_DIR}/openimis-dev.json"
 IFS='' read -r -d '' SETTINGS_DEFAULT <<'EOF'
 {
     "default": "backend",
@@ -56,23 +70,39 @@ function save_settings() {
 
 function cd_modules() {
   local sub_directory=$1
-  cd "modules/${sub_directory}" || {
+  cd "${SCRIPT_DIR}/modules/${sub_directory}" || {
     echo "The directory \`modules\` is unexpectedly absent. It should not happend as it is part of the present project."
     exit 1
   }
 }
 
 function cd_openimis-dist_dkr() {
-  cd openimis-dist_dkr || {
+  cd "${SCRIPT_DIR}/openimis-dist_dkr" || {
     echo "The directory \`openimis-dist_dkr\` is unexpectedly absent. This probably means the cloning of the Git repository \`https://github.com/openimis/openimis-dist_dkr\` has failed."
     exit 1
   }
 }
 
+function docker-compose-command() {
+  # relative to openimis-dist_dkr directory
+  echo -n "docker compose "
+  if [[ $(get_database) == "mssql" ]]; then
+    echo -n "-f docker-compose-mssql.yml "
+  else
+    echo -n "-f docker-compose.yml "
+  fi
+  echo -n "-f ../docker-compose.yml.local-dev "
+  if [[ $(get_database) == "mssql" ]]; then
+    echo "-f ../docker-compose-mssql.yml.local-dev"
+  else
+    echo "-f ../docker-compose-pgsql.yml.local-dev "
+  fi
+}
+
 function dckr-compose() {
   (
     cd_openimis-dist_dkr
-    $DOCKER_COMPOSE_COMMAND "$@"
+    $(docker-compose-command) "$@"
   )
 }
 
@@ -97,7 +127,7 @@ function status() {
   # config
   echo "Current status:"
   for service in $(get_enabled_services | tr ',' ' '); do
-    echo "${service}: $(service_status "${service}")"
+    echo "  ${service}: $(service_status "${service}")"
   done
 }
 
@@ -196,6 +226,11 @@ function available_services() {
   dckr-compose config --services
 }
 
+function check_database() {
+  local database=$1
+  echo "${VALID_DATABASES}" | grep -qw "${database}"
+}
+
 function check_service() {
   local service=$1
   available_services | grep -qw "${service}"
@@ -214,18 +249,31 @@ function get_enabled_services() {
   get_setting "services"
 }
 
+function get_database() {
+  get_setting "db"
+}
+
+function set_dotenv() {
+  sed -i -e "s/^RESTAPI_BRANCH=.*$/RESTAPI_BRANCH=fix\/use_archive_debian/" "${SCRIPT_DIR}/openimis-dist_dkr/.env"
+  if [[ $(get_database) == "mssql" ]]; then
+    sed -i -e "s/^#ACCEPT_EULA.*$/ACCEPT_EULA=y/" -e "s/^DB_PORT=.*$/DB_PORT=1433/" -e "s/^DB_ENGINE=.*$/DB_ENGINE=mssql/" "${SCRIPT_DIR}/openimis-dist_dkr/.env"
+  else
+    sed -i -e "s/^.*ACCEPT_EULA.*$/#ACCEPT_EULA=n/" -e "s/^DB_PORT=.*$/DB_PORT=5432/" -e "s/^DB_ENGINE=.*$/DB_ENGINE=django.db.backends.postgresql/" "${SCRIPT_DIR}/openimis-dist_dkr/.env"
+  fi
+}
+
 case "$1" in
 "bootstrap")
   echo "Boostrapping the dev environment"
   echo
   echo "Cloning OpenIMIS Backend Python and Distribution Docker"
-  [[ -d openimis-be_py ]] || git clone git@github.com:openimis/openimis-be_py.git openimis-be_py
-  [[ -d openimis-dist_dkr ]] || git clone https://github.com/openimis/openimis-dist_dkr openimis-dist_dkr
+  [[ -d "${SCRIPT_DIR}/openimis-be_py" ]] || git clone git@github.com:openimis/openimis-be_py.git "${SCRIPT_DIR}/openimis-be_py"
+  [[ -d "${SCRIPT_DIR}/openimis-dist_dkr" ]] || git clone https://github.com/openimis/openimis-dist_dkr "${SCRIPT_DIR}/openimis-dist_dkr"
 
   echo
   echo "Linking local directory to be bound in Docker container"
   (
-    cd openimis-dist_dkr || {
+    cd "${SCRIPT_DIR}/openimis-dist_dkr" || {
       echo "The directory \`openimis-dist_dkr\` is unexpectedly absent. This probably means the cloning of the Git repository \`https://github.com/openimis/openimis-dist_dkr\` has failed."
       exit 1
     }
@@ -237,6 +285,11 @@ case "$1" in
   echo "Generating Dockerfile to customized backend Docker image"
   sed -e "s/\(FROM python:3.8-buster\)/\1 AS ORIGIN/" ./openimis-be_py/Dockerfile >Dockerfile
   cat Dockerfile.override >>Dockerfile
+
+  echo
+  echo "Generating dotenv file"
+  sed -e "s/^#\(OPENIMIS_.*=\).*$/\1\"\"/g" -e "/^#.*$/ d" -e "/^[[:space:]]*$/d" -e "/^DB_ENGINE/a #ACCEPT_EULA=" <"${SCRIPT_DIR}/openimis-dist_dkr/.env.example" >"${SCRIPT_DIR}/openimis-dist_dkr/.env"
+  set_dotenv
   ;;
 
 "status")
@@ -244,11 +297,11 @@ case "$1" in
   ;;
 
 "logs")
-  dckr-compose logs $2
+  dckr-compose logs "$2"
   ;;
 
 "refresh")
-  refresh $2
+  refresh "$2"
   ;;
 
 "shell")
@@ -300,8 +353,42 @@ case "$1" in
   echo "Enabled services: $(get_enabled_services)"
   ;;
 
+"db")
+  database=$2
+  [[ -z $database ]] && {
+    echo "Database is: $(get_database)"
+    exit 0
+  }
+  check_database "${database}" || {
+    echo "The database \`${database}\` is not valid. Please select one of the"
+    echo "following:"
+    echo "${VALID_DATABASES/,/ }"
+    exit 1
+  }
+  [[ $(get_database) == "${database}" ]] && {
+    echo "The database is already \`${database}\`."
+    exit 0
+  }
+  is_running "db"
+  restart_needed=$?
+  [[ $restart_needed -eq 0 ]] && {
+    echo -n "Stopping all services ... "
+    dckr-compose down
+    echo "OK"
+  }
+  echo -n "Setting database to \`${database}\` ... "
+  save_settings "$(set_settings "{\"db\": \"${database}\"}")"
+  set_dotenv
+  echo "OK"
+  [[ $restart_needed -eq 0 ]] && warmup
+  ;;
+
 "default")
   default_service=$2
+  [[ -z $default_service ]] && {
+    echo "Default service is: $(get_default_service)"
+    exit 0
+  }
   check_service "${default_service}" || {
     echo "The service \`${default_service}\` does not exist. Please select one of the"
     echo "following:"
@@ -311,6 +398,10 @@ case "$1" in
   echo -n "Setting default service to \`${default_service}\` ... "
   save_settings "$(set_settings "{\"default\": \"${default_service}\"}")"
   echo "OK"
+  ;;
+
+"enabled")
+  get_enabled_services
   ;;
 
 "enable")
