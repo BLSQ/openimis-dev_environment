@@ -2,3 +2,5 @@ version: "2.4"
 services:
   db:
     image: ${PROJECT_NAME:-openimis}-db-pgsql
+  restapi:
+    entrypoint: /usr/bin/false

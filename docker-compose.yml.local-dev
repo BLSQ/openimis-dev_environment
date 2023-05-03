@@ -10,7 +10,6 @@ services:
       - ./modules/:/modules/
     entrypoint: ["tail", "-f", "/dev/null"]
   restapi:
-    entrypoint: /app/entrypoint.sh
     environment:
       - DB_HOST=${DB_HOST}
       - DB_NAME=${DB_NAME}

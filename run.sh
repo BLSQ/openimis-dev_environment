@@ -369,6 +369,12 @@ case "$1" in
     echo "The database is already \`${database}\`."
     exit 0
   }
+  [[ $database == "pgsql" ]] && get_enabled_services | grep -qw "restapi" && {
+    echo "restapi does not work with database PostgreSQL. Please disable the"
+    echo "service first with:"
+    echo "$0 disable restapi"
+    exit 1
+  }
   is_running "db"
   restart_needed=$?
   [[ $restart_needed -eq 0 ]] && {
@@ -417,6 +423,12 @@ case "$1" in
     echo "The service \`${service_to_enable}\` is already enabled."
     exit 0
   else
+    [[ $(get_database) == "pgsql" ]] && [[ $service_to_enable == "restapi" ]] && {
+      echo "${service_to_enable} does not work with database PostgreSQL. Please switch"
+      echo "to the database Microsoft SQL Server first with:"
+      echo "$0 db mssql"
+      exit 1
+    }
     echo -n "Enabling service \`${service_to_enable}\` ... "
     enabled_services="$(echo "${enabled_services},${service_to_enable}" | sed -e "s/\,/\\n/g" | sort | uniq | tr '\n' ',' | sed 's/.$//')"
     save_settings "$(set_settings "{\"services\": \"${enabled_services}\"}")"
