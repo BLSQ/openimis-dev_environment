@@ -12,7 +12,9 @@ function usage() {
   default       sets the default service to interact with (shell)
   disable       disables a given service (backend and db can't be disabled)
   enable        enables a given service (by default db and backend are run)
+  logs          prints the logs for the given service
   prepare_test  prepares the test environment in backend, in particular the database    
+  refresh       refreshes a service by rebuilding its image and (re)starting it
   server        runs the backend server
   settings      reads current settings if any
   shell         runs an interactive shell on the default service
@@ -27,7 +29,8 @@ SETTINGS_FILE="openimis-dev.json"
 IFS='' read -r -d '' SETTINGS_DEFAULT <<'EOF'
 {
     "default": "backend",
-    "services": "db,backend"
+    "services": "db,backend",
+    "db": "pgsql"
 }
 EOF
 
@@ -75,8 +78,48 @@ function dckr-compose() {
 
 function warmup() {
   echo "Warming up services $(get_enabled_services) if not running"
+  # shellcheck disable=SC2046
   dckr-compose up -d $(get_enabled_services | tr ',' ' ')
   echo "---------------------------------------------------"
+}
+
+function service_status() {
+  local service=$1
+  if is_running "${service}"; then
+    echo "OK"
+  else
+    echo "KO"
+  fi
+}
+
+function status() {
+  # boostrapped status
+  # config
+  echo "Current status:"
+  for service in $(get_enabled_services | tr ',' ' '); do
+    echo "${service}: $(service_status "${service}")"
+  done
+}
+
+function refresh() {
+  local service=$1
+  check_service "${service}" || {
+    echo "The service \`${service}\` does not exist. Please select one of the"
+    echo "following:"
+    available_services | tr '\n\r' ' '
+    exit 1
+  }
+
+  if is_running "${service}"; then
+    dckr-compose build "${service}"
+    dckr-compose restart "${service}"
+  else
+    dckr-compose up --build -d "${service}"
+  fi
+  # echo "Refreshing running and enabled services $(get_enabled_services)"
+  # # shellcheck disable=SC2046
+  # dckr-compose restart $(get_enabled_services | tr ',' ' ')
+  # echo "---------------------------------------------------"
 }
 
 function get_uri_from_git_repo() {
@@ -158,6 +201,11 @@ function check_service() {
   available_services | grep -qw "${service}"
 }
 
+function is_running() {
+  local service=$1
+  dckr-compose ps --services --all --filter status=running | grep -qw "${service}"
+}
+
 function get_default_service() {
   get_setting "default"
 }
@@ -191,8 +239,16 @@ case "$1" in
   cat Dockerfile.override >>Dockerfile
   ;;
 
-"ps")
-  dckr-compose ps
+"status")
+  status
+  ;;
+
+"logs")
+  dckr-compose logs $2
+  ;;
+
+"refresh")
+  refresh $2
   ;;
 
 "shell")

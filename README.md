@@ -24,7 +24,9 @@ One tool is provided to manage, runs, and uses the dev environment: `run.sh`
   default       sets the default service to interact with (shell)
   disable       disables a given service (backend and db can't be disabled)
   enable        enables a given service (by default db and backend are run)
+  logs          prints the logs for the given service
   prepare_test  prepares the test environment in backend, in particular the database    
+  refresh       refreshes a service by rebuilding its image and (re)starting it
   server        runs the backend server
   settings      reads current settings if any
   shell         runs an interactive shell on the default service
