@@ -24,8 +24,7 @@ function usage() {
                   possible values: $(available_services | tr '\r\n' ',' | sed "s/.$//")
   enabled         lists enabled services.
   logs <name>     prints the logs for the given service.
-  prepare_test    prepares the test environment in backend, in particular the
-                  database.
+  prepare_db      prepares the database (required before running test in backend)
   refresh <name>  refreshes a service by rebuilding its image and (re)starting
                   it.
   server          runs the backend server.
@@ -228,17 +227,17 @@ function available_services() {
 
 function check_database() {
   local database=$1
-  echo "${VALID_DATABASES}" | grep -qw "${database}"
+  contains "${VALID_DATABASES}" "${database}"
 }
 
 function check_service() {
   local service=$1
-  available_services | grep -qw "${service}"
+  contains "$(available_services)" "${service}"
 }
 
 function is_running() {
   local service=$1
-  dckr-compose ps --services --all --filter status=running | grep -qw "${service}"
+  contains "$(dckr-compose ps --services --all --filter status=running)" "${service}"
 }
 
 function get_default_service() {
@@ -260,6 +259,12 @@ function set_dotenv() {
   else
     sed -i -e "s/^.*ACCEPT_EULA.*$/#ACCEPT_EULA=n/" -e "s/^DB_PORT=.*$/DB_PORT=5432/" -e "s/^DB_ENGINE=.*$/DB_ENGINE=django.db.backends.postgresql/" "${SCRIPT_DIR}/openimis-dist_dkr/.env"
   fi
+}
+
+function contains() {
+  local string=$1
+  local substring=$2
+  echo "${string}" | grep -qw "${substring}"
 }
 
 case "$1" in
@@ -310,12 +315,20 @@ case "$1" in
   dckr-compose exec -ti "$(get_default_service)" bash
   ;;
 
-"prepare_test")
+"prepare_db")
   warmup
   echo "Preparing test"
-  dckr-compose exec db bash -c \
-    "PGPASSWORD=\$POSTGRES_PASSWORD psql -h \$HOSTNAME -U \$POSTGRES_USER \$POSTGRES_DB -c \"DROP DATABASE IF EXISTS \\\"$TEST_DB\\\"\" -c \"CREATE DATABASE \\\"$TEST_DB\\\"\" -c \"DROP ROLE \\\"postgres\\\"\" -c \"CREATE ROLE \\\"postgres\\\" WITH SUPERUSER\""
-  dckr-compose exec backend bash -c "python init_test_db.py | grep . | uniq -c"
+  case "$(get_database)" in
+  "pgsql")
+    dckr-compose exec db bash -c \
+      "PGPASSWORD=\$POSTGRES_PASSWORD psql -h \$HOSTNAME -U \$POSTGRES_USER \$POSTGRES_DB -c \"DROP DATABASE IF EXISTS \\\"$TEST_DB\\\"\" -c \"CREATE DATABASE \\\"$TEST_DB\\\"\" -c \"DROP ROLE \\\"postgres\\\"\" -c \"CREATE ROLE \\\"postgres\\\" WITH SUPERUSER\""
+    ;;
+  "mssql")
+    dckr-compose exec db bash -c \
+      "/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -Q \"DROP DATABASE IF EXISTS $TEST_DB; CREATE DATABASE $TEST_DB;\"; /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -d $TEST_DB -Q \"EXEC sp_changedbowner '\$DB_USER'\"; /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -d master -Q \"GRANT CREATE ANY DATABASE TO \$DB_USER\";"
+    ;;
+  esac
+  dckr-compose exec backend bash -c "PATH=\${PATH}:/opt/mssql-tools/bin/ python init_test_db.py | grep . | uniq -c"
   ;;
 
 "test")
@@ -351,6 +364,7 @@ case "$1" in
 "settings")
   echo "Default service: $(get_default_service)"
   echo "Enabled services: $(get_enabled_services)"
+  echo "Database: $(get_database)"
   ;;
 
 "db")
@@ -369,7 +383,7 @@ case "$1" in
     echo "The database is already \`${database}\`."
     exit 0
   }
-  [[ $database == "pgsql" ]] && get_enabled_services | grep -qw "restapi" && {
+  [[ $database == "pgsql" ]] && contains "$(get_enabled_services)" "restapi" && {
     echo "restapi does not work with database PostgreSQL. Please disable the"
     echo "service first with:"
     echo "$0 disable restapi"
@@ -401,6 +415,13 @@ case "$1" in
     available_services | tr '\n\r' ' '
     exit 1
   }
+  contains "$(get_enabled_services)" "${default_service}" || {
+    echo "The service \`${default_service}\` is not enabled. Please select one of the"
+    echo "following:"
+    get_enabled_services
+    exit 1
+  }
+
   echo -n "Setting default service to \`${default_service}\` ... "
   save_settings "$(set_settings "{\"default\": \"${default_service}\"}")"
   echo "OK"
@@ -419,7 +440,7 @@ case "$1" in
     exit 1
   }
   enabled_services="$(get_setting "services")"
-  if echo "${enabled_services}" | grep -qw "$service_to_enable"; then
+  if contains "${enabled_services}" "$service_to_enable"; then
     echo "The service \`${service_to_enable}\` is already enabled."
     exit 0
   else
@@ -447,14 +468,14 @@ case "$1" in
   enabled_services="$(get_setting "services")"
   mandatory_services="backend db"
   for mandatory_service in $mandatory_services; do
-    echo "${service_to_disable}" | grep -qw "${mandatory_service}" && {
+    contains "${service_to_disable}" "${mandatory_service}" && {
       echo "The service \`${service_to_disable}\` is a mandatory service."
       echo "You cannot disable it."
       exit 1
     }
   done
 
-  if echo "${enabled_services}" | grep -qw "${service_to_disable}"; then
+  if contains "${enabled_services}" "${service_to_disable}"; then
     echo -n "Disabling service \`${service_to_disable}\` ... "
     enabled_services="$(echo "${enabled_services}" | sed -e "s/\,/\\n/g" | sed "/${service_to_disable}/d" | sort | uniq | tr '\n' ',' | sed 's/.$//')"
     save_settings "$(set_settings "{\"services\": \"${enabled_services}\"}")"
@@ -462,6 +483,13 @@ case "$1" in
   else
     echo "The service \`${service_to_disable}\` is already disabled."
     exit 0
+  fi
+
+  if [[ $(get_default_service) == "${service_to_disable}" ]]; then
+    echo "Service \`${service_to_disable}\` is the current default."
+    echo -n "Setting default service to \`backend\` ... "
+    save_settings "$(set_settings "{\"default\": \"backend\"}")"
+    echo "OK"
   fi
   ;;
 
