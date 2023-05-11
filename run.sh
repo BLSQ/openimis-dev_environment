@@ -29,7 +29,8 @@ function usage() {
                   it.
   server          runs the backend server.
   settings        reads current settings if any.
-  shell           runs an interactive shell on the default service.
+  shell [name]    runs an interactive shell on the given service or the default
+                  one if nothing passed.
   status          returns current status of the environment.
   stop            stops the environment if running.
   test            runs test for given module in backend.
@@ -310,9 +311,14 @@ case "$1" in
   ;;
 
 "shell")
+  service_to_interact_with=$2
   warmup
   echo "Entering interactive shell:"
-  dckr-compose exec -ti "$(get_default_service)" bash
+  if [[ -z $service_to_interact_with ]]; then
+    dckr-compose exec -ti "$(get_default_service)" bash
+  else
+    dckr-compose exec -ti "${service_to_interact_with}" bash
+  fi
   ;;
 
 "prepare_db")

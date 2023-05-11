@@ -35,13 +35,13 @@ One tool is provided to manage, runs, and uses the dev environment: `run.sh`
                   possible values: db,backend,frontend,gateway,rabbitmq,restapi,worker
   enabled         lists enabled services.
   logs <name>     prints the logs for the given service.
-  prepare_test    prepares the test environment in backend, in particular the
-                  database.
+  prepare_db      prepares the database (required before running test in backend)
   refresh <name>  refreshes a service by rebuilding its image and (re)starting
                   it.
   server          runs the backend server.
   settings        reads current settings if any.
-  shell           runs an interactive shell on the default service.
+  shell [name]    runs an interactive shell on the given service or the default
+                  one if nothing passed.
   status          returns current status of the environment.
   stop            stops the environment if running.
   test            runs test for given module in backend.
