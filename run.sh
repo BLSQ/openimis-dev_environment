@@ -27,7 +27,8 @@ function usage() {
   prepare_db      prepares the database (required before running test in backend)
   refresh <name>  refreshes a service by rebuilding its image and (re)starting
                   it.
-  server          runs the backend server.
+  server          runs the backend server in background.
+  shutdown        stops the backend server.
   settings        reads current settings if any.
   shell [name]    runs an interactive shell on the given service or the default
                   one if nothing passed.
@@ -122,13 +123,26 @@ function service_status() {
   fi
 }
 
+function backend_status() {
+  if is_running "backend"; then
+    if dckr-compose exec backend pgrep -f "python server.py" >/dev/null; then
+      echo "OK"
+    else
+      echo "KO"
+    fi
+  else
+    echo "KO"
+  fi
+}
+
 function status() {
   # boostrapped status
   # config
-  echo "Current status:"
+  echo "Services:"
   for service in $(get_enabled_services | tr ',' ' '); do
     echo "  ${service}: $(service_status "${service}")"
   done
+  echo "  backend server: $(backend_status)"
 }
 
 function refresh() {
@@ -524,6 +538,18 @@ case "$1" in
     save_settings "$(set_settings "{\"default\": \"backend\"}")"
     echo "OK"
   fi
+  ;;
+
+"server")
+  warmup
+  echo -n "Starting backend server in the background ..."
+  dckr-compose exec -d backend bash -c "/openimis-be/script/entrypoint.sh start > /proc/1/fd/1"
+  echo "OK"
+  ;;
+
+"shutdown")
+  echo -n "Shutting down backend server ..."
+  dckr-compose exec backend bash -c "echo -n 'Stopping Django ...' > /proc/1/fd/1; pkill -SIGINT -f 'python server.py'; echo 'OK' > /proc/1/fd/1;"
   ;;
 
 *)

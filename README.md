@@ -38,7 +38,8 @@ One tool is provided to manage, runs, and uses the dev environment: `run.sh`
   prepare_db      prepares the database (required before running test in backend)
   refresh <name>  refreshes a service by rebuilding its image and (re)starting
                   it.
-  server          runs the backend server.
+  server          runs the backend server in background.
+  shutdown        stops the backend server.
   settings        reads current settings if any.
   shell [name]    runs an interactive shell on the given service or the default
                   one if nothing passed.
