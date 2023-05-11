@@ -10,7 +10,7 @@ Python Backend.
 * Bash
 * Linux system
 
-## Tools
+## Run dev environment
 
 One tool is provided to manage, runs, and uses the dev environment: `run.sh`
 
@@ -48,6 +48,14 @@ One tool is provided to manage, runs, and uses the dev environment: `run.sh`
   workon <name>   switches a module in backend for its local version for
                   development.
 ```
+
+## Tools
+
+In the directory [`tools`](tools/), you'll find some tools useful during dev:
+
+* `cs_rest_api_mobile_call_example.sh` is a scenario of HTTP requests made at
+  the C# REST API to reproduce the ones made by the claims mobile app. This
+  might be deleted when the migration to FHIR is done.
 
 ## Documentation
 
