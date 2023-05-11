@@ -254,7 +254,7 @@ function get_database() {
 }
 
 function set_dotenv() {
-  sed -i -e "s/^RESTAPI_BRANCH=.*$/RESTAPI_BRANCH=fix\/use_archive_debian/" "${SCRIPT_DIR}/openimis-dist_dkr/.env"
+  sed -i -e "s/^RESTAPI_BRANCH=.*$/RESTAPI_BRANCH=fix\/use_archive_debian/" -e "s/^DB_BRANCH=.*$/DB_BRANCH=develop/" "${SCRIPT_DIR}/openimis-dist_dkr/.env"
   if [[ $(get_database) == "mssql" ]]; then
     sed -i -e "s/^#ACCEPT_EULA.*$/ACCEPT_EULA=y/" -e "s/^DB_PORT=.*$/DB_PORT=1433/" -e "s/^DB_ENGINE=.*$/DB_ENGINE=mssql/" "${SCRIPT_DIR}/openimis-dist_dkr/.env"
   else
@@ -266,6 +266,27 @@ function contains() {
   local string=$1
   local substring=$2
   echo "${string}" | grep -qw "${substring}"
+}
+
+function download_mssql_scripts() {
+  [[ -d "${SCRIPT_DIR}/database_ms_sqlserver" ]] ||
+    git clone https://github.com/openimis/database_ms_sqlserver.git "${SCRIPT_DIR}/database_ms_sqlserver/"
+  (
+    cd "${SCRIPT_DIR}/database_ms_sqlserver/" || {
+      echo "The directory \`database_ms_sqlserver\` is unexpectedly absent. This probably means the cloning of the Git repository \`https://github.com/openimis/database_ms_sqlserver\` has failed."
+      exit 1
+    }
+    git checkout develop
+    bash ./concatenate_files.sh
+  )
+  (
+    cd "${SCRIPT_DIR}/openimis-dist_dkr" || {
+      echo "The directory \`openimis-dist_dkr\` is unexpectedly absent. This probably means the cloning of the Git repository \`https://github.com/openimis/openimis-dist_dkr\` has failed."
+      exit 1
+    }
+    [[ -L database_ms_sqlserver ]] || ln -fs ../database_ms_sqlserver .
+
+  )
 }
 
 case "$1" in
@@ -322,16 +343,22 @@ case "$1" in
   ;;
 
 "prepare_db")
+  echo -n "Downloading SQL scripts ... "
+  download_mssql_scripts
+  echo "OK"
   warmup
-  echo "Preparing test"
+  echo "Preparing db"
   case "$(get_database)" in
   "pgsql")
+    # That might need also updated scripts as mssql, to check
     dckr-compose exec db bash -c \
       "PGPASSWORD=\$POSTGRES_PASSWORD psql -h \$HOSTNAME -U \$POSTGRES_USER \$POSTGRES_DB -c \"DROP DATABASE IF EXISTS \\\"$TEST_DB\\\"\" -c \"CREATE DATABASE \\\"$TEST_DB\\\"\" -c \"DROP ROLE \\\"postgres\\\"\" -c \"CREATE ROLE \\\"postgres\\\" WITH SUPERUSER\""
     ;;
   "mssql")
     dckr-compose exec db bash -c \
       "/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -Q \"DROP DATABASE IF EXISTS $TEST_DB; CREATE DATABASE $TEST_DB;\"; /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -d $TEST_DB -Q \"EXEC sp_changedbowner '\$DB_USER'\"; /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -d master -Q \"GRANT CREATE ANY DATABASE TO \$DB_USER\";"
+    dckr-compose exec db bash -c \
+      "/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -Q \"DROP DATABASE IF EXISTS \$DB_NAME; CREATE DATABASE \$DB_NAME;\"; /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -Q \"USE \$DB_NAME; EXEC sp_changedbowner '\$DB_USER'\"; /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -i /database_ms_sqlserver/output/fullDemoDatabase.sql -d \$DB_NAME | grep . | uniq -c"
     ;;
   esac
   dckr-compose exec backend bash -c "PATH=\${PATH}:/opt/mssql-tools/bin/ python init_test_db.py | grep . | uniq -c"
