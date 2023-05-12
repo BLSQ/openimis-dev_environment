@@ -46,6 +46,7 @@ One tool is provided to manage, runs, and uses the dev environment: `run.sh`
   status          returns current status of the environment.
   stop            stops the environment if running.
   test            runs test for given module in backend.
+  warmup          warms up enabled services.
   workon <name>   switches a module in backend for its local version for
                   development.
 ```

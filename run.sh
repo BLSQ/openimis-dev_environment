@@ -35,6 +35,7 @@ function usage() {
   status          returns current status of the environment.
   stop            stops the environment if running.
   test            runs test for given module in backend.
+  warmup          warms up enabled services.
   workon <name>   switches a module in backend for its local version for
                   development.
   """
@@ -550,6 +551,11 @@ case "$1" in
 "shutdown")
   echo -n "Shutting down backend server ..."
   dckr-compose exec backend bash -c "echo -n 'Stopping Django ...' > /proc/1/fd/1; pkill -SIGINT -f 'python server.py'; echo 'OK' > /proc/1/fd/1;"
+  ;;
+
+"warmup")
+  echo "Warming up all enabled services ..."
+  warmup
   ;;
 
 *)
