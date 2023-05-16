@@ -136,6 +136,10 @@ function backend_status() {
   fi
 }
 
+function running_disabled_services() {
+  running_services | tr '\r\n' ' ' | sed -e "s/\($(get_enabled_services | sed -e "s/,/\\\|/g")\)//g" -e "s/^[[:space:]]\+//" -e "s/[[:space:]]\+$//" -e "s/[[:space:]]\+/ /"
+}
+
 function status() {
   # boostrapped status
   # config
@@ -144,6 +148,9 @@ function status() {
     echo "  ${service}: $(service_status "${service}")"
   done
   echo "  backend server: $(backend_status)"
+  for service in $(running_disabled_services); do
+    echo "  ${service} (disabled): OK"
+  done
 }
 
 function refresh() {
@@ -251,9 +258,13 @@ function check_service() {
   contains "$(available_services)" "${service}"
 }
 
+function running_services() {
+  dckr-compose ps --services --all --filter status=running | tr '\r\n' ' '
+}
+
 function is_running() {
   local service=$1
-  contains "$(dckr-compose ps --services --all --filter status=running)" "${service}"
+  contains "$(running_services)" "${service}"
 }
 
 function get_default_service() {
