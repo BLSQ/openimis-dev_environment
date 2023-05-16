@@ -3,6 +3,7 @@
 TEST_DB="test_IMIS"
 VALID_DATABASES="pgsql,mssql"
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+DJANGO_SERVER_COMMAND="python manage.py runserver"
 
 function usage() {
   echo """
@@ -28,10 +29,10 @@ function usage() {
   refresh <name>  refreshes a service by rebuilding its image and (re)starting
                   it.
   server          runs the backend server in background.
-  shutdown        stops the backend server.
   settings        reads current settings if any.
   shell [name]    runs an interactive shell on the given service or the default
                   one if nothing passed.
+  shutdown        stops the backend server.
   status          returns current status of the environment.
   stop            stops the environment if running.
   test            runs test for given module in backend.
@@ -126,7 +127,7 @@ function service_status() {
 
 function backend_status() {
   if is_running "backend"; then
-    if dckr-compose exec backend pgrep -f "python server.py" >/dev/null; then
+    if dckr-compose exec backend pgrep -f "${DJANGO_SERVER_COMMAND}" >/dev/null; then
       echo "OK"
     else
       echo "KO"
@@ -551,14 +552,31 @@ case "$1" in
 
 "server")
   warmup
-  echo -n "Starting backend server in the background ..."
-  dckr-compose exec -d backend bash -c "/openimis-be/script/entrypoint.sh start > /proc/1/fd/1"
-  echo "OK"
+  echo -n "Starting backend server in the background ... "
+  [[ $(backend_status) == 'OK' ]] && {
+    echo "OK (already running)"
+    exit 0
+  }
+
+  if dckr-compose exec -d backend bash -c "export LOGGING_LEVEL=DEBUG;export DJANGO_LOG_HANDLER=console;${DJANGO_SERVER_COMMAND} 0.0.0.0:8000 &> /proc/1/fd/1"; then
+    echo "OK"
+  else
+    echo "KO"
+  fi
   ;;
 
 "shutdown")
-  echo -n "Shutting down backend server ..."
-  dckr-compose exec backend bash -c "echo -n 'Stopping Django ...' > /proc/1/fd/1; pkill -SIGINT -f 'python server.py'; echo 'OK' > /proc/1/fd/1;"
+  echo -n "Shutting down backend server ... "
+  [[ $(backend_status) == 'KO' ]] && {
+    echo "OK (already stopped)"
+    exit 0
+  }
+
+  if dckr-compose exec backend bash -c "echo -n 'Stopping Django ...' > /proc/1/fd/1; pkill -SIGINT -f '${DJANGO_SERVER_COMMAND}'; echo 'OK' > /proc/1/fd/1;"; then
+    echo "OK"
+  else
+    echo "KO"
+  fi
   ;;
 
 "warmup")
