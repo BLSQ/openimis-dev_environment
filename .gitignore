@@ -5,3 +5,4 @@ modules/*/
 Dockerfile
 openimis-dev.json
 TODO.md
+tools/fhir_mobile_pact_session/*

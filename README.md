@@ -58,6 +58,8 @@ In the directory [`tools`](tools/), you'll find some tools useful during dev:
 * `cs_rest_api_mobile_call_example.sh` is a scenario of HTTP requests made at
   the C# REST API to reproduce the ones made by the claims mobile app. This
   might be deleted when the migration to FHIR is done.
+* `fhir_mobile_pact.sh` is a scenario of HTTP requests made at FHIR REST API
+  exposed through the Django backend server.
 
 ## Documentation
 
