@@ -350,7 +350,8 @@ case "$1" in
   ;;
 
 "logs")
-  dckr-compose logs "$2"
+  service_to_log=${2:-$(get_default_service)}
+  dckr-compose logs ${follow_option} "$service_to_log"
   ;;
 
 "refresh")
@@ -358,14 +359,10 @@ case "$1" in
   ;;
 
 "shell")
-  service_to_interact_with=$2
+  service_to_interact_with=${2:-$(get_default_service)}
   warmup
   echo "Entering interactive shell:"
-  if [[ -z $service_to_interact_with ]]; then
-    dckr-compose exec -ti "$(get_default_service)" bash
-  else
-    dckr-compose exec -ti "${service_to_interact_with}" bash
-  fi
+  dckr-compose exec -ti "${service_to_interact_with}" bash
   ;;
 
 "prepare_db")
