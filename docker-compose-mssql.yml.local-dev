@@ -4,3 +4,5 @@ services:
     image: ${PROJECT_NAME:-openimis}-db-mssql
     volumes:
       - ./database_ms_sqlserver/:/database_ms_sqlserver/
+  restapi:
+    entrypoint: ["sh", "-c", "touch /app/log/server_log.log && (tail -n 0 -f /app/log/server_log.log > /proc/1/fd/1 &); /app/entrypoint.sh;"]
