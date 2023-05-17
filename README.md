@@ -55,11 +55,14 @@ One tool is provided to manage, runs, and uses the dev environment: `run.sh`
 
 In the directory [`tools`](tools/), you'll find some tools useful during dev:
 
-* `cs_rest_api_mobile_call_example.sh` is a scenario of HTTP requests made at
+* `cs_rest_api_mobile_pact.sh` is a scenario of HTTP requests made at
   the C# REST API to reproduce the ones made by the claims mobile app. This
   might be deleted when the migration to FHIR is done.
 * `fhir_mobile_pact.sh` is a scenario of HTTP requests made at FHIR REST API
   exposed through the Django backend server.
+
+Those tools must be run outside the containers. They might require the gateway
+service so they can connect to their respective HTTP servers.
 
 ## Documentation
 
