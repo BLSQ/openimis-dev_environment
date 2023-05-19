@@ -9,6 +9,38 @@ COOKIE_FILE="${SESSION_DIR}/cookie.txt"
 
 [[ -f $COOKIE_FILE ]] && rm "${COOKIE_FILE}"
 
+function urldecode() {
+  : "${*//+/ }"
+  echo -e "${_//%/\\x}"
+}
+
+function paginated_get_curl() {
+  local message=$1
+  local page=1
+  local url=$2
+  local filename
+  echo -n "${message}"
+  while
+    filename="${SESSION_DIR}/$3_page${page}.json"
+    echo -n " page ${page}"
+    curl -sX GET "${url}" \
+      -H "accept: application/json" \
+      -H "Content-Type: application/json" \
+      -b "${COOKIE_FILE}" \
+      -o "${filename}" >/dev/null
+    if grep -q '"relation":' "${filename}"; then
+      url=$(urldecode "$(jq -r '.link[] | select(.relation == "next") | .url' "${filename}")" | sed -e "s/demo\.openimis\.org/localhost/" -e "s/https:/http:/")
+    else
+      echo " ERROR"
+      return 1
+    fi
+    [[ -n $url ]]
+  do
+    ((page++))
+  done
+  echo
+}
+
 # Test if the backend is reachable/available
 
 curl -sI "http://localhost/api/" | grep 502 >/dev/null && {
@@ -30,52 +62,54 @@ curl -sX POST "http://localhost/api/graphql" \
 
 # https://openimis.atlassian.net/wiki/spaces/OP/pages/1389592716/FHIR+R4+-+Practitioner
 # similar to `claim/GetClaimAdmins` (not directly used in claim mobile app)
-echo "get practitioners (claim admins)"
-curl -sX GET "http://localhost/api/api_fhir_r4/Practitioner/" \
+paginated_get_curl "get practitioners (claim admins)" \
+  "http://localhost/api/api_fhir_r4/Practitioner/" \
+  "claim_admins"
+
+# https://fhir.openimis.org/CodeSystem-diagnosis-ICD10-level1.html
+# similar to a part of `claim/GetDiagnosesServicesItems`
+echo "get code systems"
+curl -sX GET "http://localhost/api/api_fhir_r4/CodeSystem/diagnosis/" \
   -H "accept: application/json" \
   -H "Content-Type: application/json" \
   -b "${COOKIE_FILE}" \
-  -o "${SESSION_DIR}/claim_admins.json" >/dev/null
+  -o "${SESSION_DIR}/claim_dianosis.json" >/dev/null
 
 # https://openimis.atlassian.net/wiki/spaces/OP/pages/1400012844/FHIR+R4+-+ActivityDefinition
-# similar to `claim/GetDiagnosesServicesItems` and partly `claim/GetPaymentLists`
+# similar to a part of `claim/GetDiagnosesServicesItems` and partly
+# `claim/GetPaymentLists`
 
-echo "get services (diagnoses services items and payment list)"
-curl -sX GET "http://localhost/api/api_fhir_r4/ActivityDefinition/" \
-  -H "accept: application/json" \
-  -H "Content-Type: application/json" \
-  -b "${COOKIE_FILE}" \
-  -o "${SESSION_DIR}/claim_services.json" >/dev/null
+paginated_get_curl "get services (diagnoses services items and payment list)" \
+  "http://localhost/api/api_fhir_r4/ActivityDefinition/" \
+  "claim_services"
 
 # https://openimis.atlassian.net/wiki/spaces/OP/pages/1400045588/FHIR+R4+-+Medication
-# similar to `claim/GetPaymentLists`
+# similar to a part of `claim/GetDiagnosesServicesItems` and partly
+# `claim/GetPaymentLists`
 
-echo "get medications (diagnoses services items and payment list)"
-curl -sX GET "http://localhost/api/api_fhir_r4/Medication/" \
-  -H "accept: application/json" \
-  -H "Content-Type: application/json" \
-  -b "${COOKIE_FILE}" \
-  -o "${SESSION_DIR}/claim_medications.json" >/dev/null
+paginated_get_curl "get medications (diagnoses services items and payment list):" \
+  "http://localhost/api/api_fhir_r4/Medication/" \
+  "claim_medications"
 
 # https://openimis.atlassian.net/wiki/spaces/OP/pages/1389592652/FHIR+R4+-+ClaimResponse
 # similar to `http://localhost/api/claim/GetClaims` list or get on a given id
 
-echo "get claims"
-curl -sX GET "http://localhost/api/api_fhir_r4/ClaimResponse/" \
-  -H "accept: application/json" \
-  -H "Content-Type: application/json" \
-  -b "${COOKIE_FILE}" \
-  -o "${SESSION_DIR}/claim_responses.json" >/dev/null
+paginated_get_curl "get claims:" \
+  "http://localhost/api/api_fhir_r4/ClaimResponse/" \
+  "claim_responses"
 
 # https://www.hl7.org/fhir/organization.html
 # to retrieve health facilities (not directly used in claim mobile app)
 
-echo "get organizations (health facilities)"
-curl -sX GET "http://localhost/api/api_fhir_r4/Organization/" \
-  -H "accept: application/json" \
-  -H "Content-Type: application/json" \
-  -b "${COOKIE_FILE}" \
-  -o "${SESSION_DIR}/claim_organizations.json" >/dev/null
+paginated_get_curl "get organizations (health facilities):" \
+  "http://localhost/api/api_fhir_r4/Organization/" \
+  "claim_organizations"
+
+# https://openimis.atlassian.net/wiki/spaces/OP/pages/1389592724/FHIR+R4+-+PractitionerRole
+# Neeeded to link practitioner to their organization
+paginated_get_curl "get practitioner roles" \
+  "http://localhost/api/api_fhir_r4/PractitionerRole/" \
+  "claim_pracitioner_roles"
 
 # https://openimis.atlassian.net/wiki/spaces/OP/pages/1389133931/FHIR+R4+-+Patient
 # similar to `insuree/{chfid}` but list or direct ID
