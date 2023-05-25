@@ -42,8 +42,22 @@ function paginated_get_curl() {
 }
 
 # Test if the backend is reachable/available
-
-curl -sI "http://localhost/api/" | grep 502 >/dev/null && {
+echo -n "Check that the server is up (5 tries):"
+try=0
+success=0
+while
+  if curl -sI "http://localhost/api/" | grep 404 >/dev/null; then
+    success=1
+  else
+    ((try++))
+  fi
+  [[ $success -eq 0 ]] && [[ try -lt 5 ]]
+do
+  echo -n " ${try}"
+  sleep 5
+done
+echo " UP!"
+[[ $success -eq 0 ]] && {
   echo "Backend is not reachable at localhost:80."
   echo "Please check that it is properly running with \`./run.sh status\`. You"
   echo "can run it with \`./run.sh server\`."
@@ -57,6 +71,11 @@ curl -sX POST "http://localhost/api/graphql" \
   -H "Content-Type: application/json" \
   -c "${COOKIE_FILE}" \
   -d @"${SCRIPT_DIR}/fhir_mobile_pact_files/authenticate.json" >/dev/null
+
+# curl -sX POST "http://localhost/api/api_fhir_r4/login/" \
+#   -H "accept: application/json" \
+#   -H "Content-Type: application/json" \
+#   -d'{"username":"Admin","password":"admin123"}'
 
 # nothin similar to `claim/Controls`
 
