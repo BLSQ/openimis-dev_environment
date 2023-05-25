@@ -4,6 +4,7 @@ TEST_DB="test_IMIS"
 VALID_DATABASES="pgsql,mssql"
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 DJANGO_SERVER_COMMAND="python manage.py runserver"
+DJANGO_MIGRATION_COMMAND="python manage.py migrate"
 
 function usage() {
   echo """
@@ -381,7 +382,7 @@ case "$1" in
   download_mssql_scripts
   echo "OK"
   warmup
-  echo "Preparing db"
+  echo -n "Preparing db:"
   case "$(get_database)" in
   "pgsql")
     # That might need also updated scripts as mssql, to check
@@ -389,12 +390,17 @@ case "$1" in
       "PGPASSWORD=\$POSTGRES_PASSWORD psql -h \$HOSTNAME -U \$POSTGRES_USER \$POSTGRES_DB -c \"DROP DATABASE IF EXISTS \\\"$TEST_DB\\\"\" -c \"CREATE DATABASE \\\"$TEST_DB\\\"\" -c \"DROP ROLE \\\"postgres\\\"\" -c \"CREATE ROLE \\\"postgres\\\" WITH SUPERUSER\""
     ;;
   "mssql")
+    echo -n " test"
     dckr-compose exec db bash -c \
       "/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -Q \"DROP DATABASE IF EXISTS $TEST_DB; CREATE DATABASE $TEST_DB;\"; /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -d $TEST_DB -Q \"EXEC sp_changedbowner '\$DB_USER'\"; /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -d master -Q \"GRANT CREATE ANY DATABASE TO \$DB_USER\";"
+    echo " demo"
     dckr-compose exec db bash -c \
       "/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -Q \"DROP DATABASE IF EXISTS \$DB_NAME; CREATE DATABASE \$DB_NAME;\"; /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -Q \"USE \$DB_NAME; EXEC sp_changedbowner '\$DB_USER'\"; /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -i /database_ms_sqlserver/output/fullDemoDatabase.sql -d \$DB_NAME | grep . | uniq -c"
     ;;
   esac
+  echo "Running migration on demo db"
+  dckr-compose exec backend bash -c "${DJANGO_MIGRATION_COMMAND}"
+  echo "Initializing test db"
   dckr-compose exec backend bash -c "PATH=\${PATH}:/opt/mssql-tools/bin/ python init_test_db.py | grep . | uniq -c"
   ;;
 
@@ -575,7 +581,11 @@ case "$1" in
     exit 0
   }
 
-  if dckr-compose exec -d backend bash -c "export LOGGING_LEVEL=DEBUG;export DJANGO_LOG_HANDLER=console;${DJANGO_SERVER_COMMAND} 0.0.0.0:8000 &> /proc/1/fd/1"; then
+  if [[ $1 == "--migrate" ]]; then
+    dckr-compose exec -d backend bash -c "${DJANGO_MIGRATION_COMMAND} &> /proc/1/fd/1"
+  fi
+
+  if dckr-compose exec -d backend bash -c "export LOGGING_LEVEL=DEBUG;export DJANGO_LOG_HANDLER=console;export SCHEDULER_AUTOSTART=True; ${DJANGO_SERVER_COMMAND} 0.0.0.0:8000 &> /proc/1/fd/1"; then
     echo "OK"
   else
     echo "KO"
