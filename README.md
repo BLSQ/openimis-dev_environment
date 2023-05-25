@@ -27,13 +27,14 @@ One tool is provided to manage, runs, and uses the dev environment: `run.sh`
   bootstrap       bootstraps the development environment.
   db  [name]      sets and uses the database type (restart if running) or gets
                   it if nothing passed.
-                  possible values: pgsql,mssql
+                  possible values: ${VALID_DATABASES}
   default [name]  sets the default service to interact with (shell) or gets it
                   if nothing passed.
   disable <name>  disables a given service (backend and db can't be disabled).
   enable  <name>  enables a given service (db and backend are mandatory).
-                  possible values: db,backend,frontend,gateway,rabbitmq,restapi,worker
+                  possible values: $(available_services | tr '\r\n' ',' | sed "s/.$//")
   enabled         lists enabled services.
+  modules         lists known backend modules.
   logs <name>     prints the logs for the given service.
   prepare_db      prepares the database (required before running test in backend)
   refresh <name>  refreshes a service by rebuilding its image and (re)starting

@@ -24,6 +24,7 @@ function usage() {
   enable  <name>  enables a given service (db and backend are mandatory).
                   possible values: $(available_services | tr '\r\n' ',' | sed "s/.$//")
   enabled         lists enabled services.
+  modules         lists known backend modules.
   logs <name>     prints the logs for the given service.
   prepare_db      prepares the database (required before running test in backend)
   refresh <name>  refreshes a service by rebuilding its image and (re)starting
@@ -187,7 +188,11 @@ function get_name_from_git_repo() {
 }
 
 function clone_module() {
-  local module_name, module_repo, module_repo_uri, module_repo_branch, module_repo_name
+  local module_name
+  local module_repo
+  local module_repo_uri
+  local module_repo_branch
+  local module_repo_name
   module_name=$1
   module_repo=$2
   module_repo_uri="$(get_uri_from_git_repo "${module_repo}")"
@@ -232,6 +237,10 @@ function get_module_repo() {
     exit 1
   }
   echo "${module_repo}"
+}
+
+function list_modules() {
+  jq -r '.modules[].name' ./openimis-be_py/openimis.json | tr '\r\n' ' ' | sed -e "s/ $//"
 }
 
 function set_settings() {
@@ -584,6 +593,10 @@ case "$1" in
   warmup
   ;;
 
+"modules")
+  echo "Known modules for the OpenIMIS backend:"
+  list_modules
+  ;;
 *)
   usage
   ;;
