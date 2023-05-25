@@ -37,6 +37,7 @@ One tool is provided to manage, runs, and uses the dev environment: `run.sh`
   modules         lists known backend modules.
   logs <name>     prints the logs for the given service.
   prepare_db      prepares the database (required before running test in backend)
+  purge           stops and removes all containers and volumes.
   refresh <name>  refreshes a service by rebuilding its image and (re)starting
                   it.
   server          runs the backend server in background.

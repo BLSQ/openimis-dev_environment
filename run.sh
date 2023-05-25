@@ -29,6 +29,7 @@ function usage() {
   prepare_db      prepares the database (required before running test in backend)
   refresh <name>  refreshes a service by rebuilding its image and (re)starting
                   it.
+  purge           stops and removes all containers and volumes.
   server          runs the backend server in background.
   settings        reads current settings if any.
   shell [name]    runs an interactive shell on the given service or the default
@@ -425,6 +426,13 @@ case "$1" in
 "stop")
   echo "Stopping everything"
   dckr-compose down
+  ;;
+
+"purge")
+  echo "Stopping everything"
+  dckr-compose down
+  echo "Removing volumes"
+  docker volume rm $(docker volume ls -q | grep openimis-dist_dkr)
   ;;
 
 "settings")
