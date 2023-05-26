@@ -347,9 +347,15 @@ case "$1" in
   )
 
   echo
-  echo "Generating Dockerfile to customized backend Docker image"
+  echo "Generating Dockerfile to customized backend Docker image. The original file \`./openimis-be_py/Dockerfile\`"
+  echo "has been renamed \`./openimis-be_py/Dockerfile.bck\`."
+  (
+    cd ./openimis-be_py
+    git restore Dockerfile
+  )
   sed -e "s/\(FROM python:3.8-buster\)/\1 AS ORIGIN/" ./openimis-be_py/Dockerfile >Dockerfile
   cat Dockerfile.override >>Dockerfile
+  mv Dockerfile ./openimis-be_py/Dockerfile
 
   echo
   echo "Generating dotenv file"

@@ -3,7 +3,7 @@ services:
   backend:
     build:
       context: ./openimis-be_py
-      dockerfile: ../Dockerfile
+      dockerfile: ./Dockerfile
     image: openimis/backend:${PROJECT_NAME:-dev}
     volumes:
       - ./openimis-be_py/:/openimis-be/
