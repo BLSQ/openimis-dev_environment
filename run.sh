@@ -167,16 +167,12 @@ function refresh() {
     exit 1
   }
 
+  dckr-compose build "${service}"
   if is_running "${service}"; then
-    dckr-compose build "${service}"
     dckr-compose restart "${service}"
   else
-    dckr-compose up --build -d "${service}"
+    dckr-compose up -d "${service}"
   fi
-  # echo "Refreshing running and enabled services $(get_enabled_services)"
-  # # shellcheck disable=SC2046
-  # dckr-compose restart $(get_enabled_services | tr ',' ' ')
-  # echo "---------------------------------------------------"
 }
 
 function get_uri_from_git_repo() {
@@ -354,13 +350,13 @@ case "$1" in
     cd ./openimis-be_py
     git restore Dockerfile
   )
-  sed -e "s/\(FROM python:3.8-buster\)/\1 AS ORIGIN/" ./openimis-be_py/Dockerfile >Dockerfile
+  sed -e "s/\(FROM python:3.8-buster\)/\1 AS origin/" ./openimis-be_py/Dockerfile >Dockerfile
   cat Dockerfile.override >>Dockerfile
   mv Dockerfile ./openimis-be_py/Dockerfile
 
   echo
   echo "Generating dotenv file"
-  sed -e "s/^#\(OPENIMIS_.*=\).*$/\1\"\"/g" -e "/^#.*$/ d" -e "/^[[:space:]]*$/d" -e "/^DB_ENGINE/a #ACCEPT_EULA=" <"${SCRIPT_DIR}/openimis-dist_dkr/.env.example" >"${SCRIPT_DIR}/openimis-dist_dkr/.env"
+  sed -e "s/^#\(OPENIMIS_FE_CONF_JSON=\).*$/\1\"\"\nOPENIMIS_BE_CONF_JSON=\"\"/" -e "s/^#INIT_MODE.*$/INIT_MODE=\"\"/" -e "/^#.*$/ d" -e "/^[[:space:]]*$/d" -e "/^DB_ENGINE/a #ACCEPT_EULA=" <"${SCRIPT_DIR}/openimis-dist_dkr/.env.example" >"${SCRIPT_DIR}/openimis-dist_dkr/.env"
   set_dotenv
   ;;
 
@@ -487,6 +483,11 @@ case "$1" in
   save_settings "$(set_settings "{\"db\": \"${database}\"}")"
   set_dotenv
   echo "OK"
+  if docker volume ls | grep -q openimis-dist_dkr_database; then
+    echo -n "Removing database volume ..."
+    docker volume rm openimis-dist_dkr_database
+    echo "OK"
+  fi
   [[ $restart_needed -eq 0 ]] && warmup
   ;;
 

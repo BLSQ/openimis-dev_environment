@@ -1,8 +1,10 @@
 version: "2.4"
 services:
   db:
-    image: ${PROJECT_NAME:-openimis}-db-mssql
+    image: ${PROJECT_NAME:-openimis}/db:demo-mssql
     volumes:
       - ./database_ms_sqlserver/:/database_ms_sqlserver/
   restapi:
     entrypoint: ["sh", "-c", "touch /app/log/server_log.log && (tail -n 0 -f /app/log/server_log.log > /proc/1/fd/1 &); /app/entrypoint.sh;"]
+  backend:
+    image: ${PROJECT_NAME:-openimis}/backend:demo-mssql

@@ -4,7 +4,8 @@ services:
     build:
       context: ./openimis-be_py
       dockerfile: ./Dockerfile
-    image: openimis/backend:${PROJECT_NAME:-dev}
+      args:
+        - DB_ENGINE=${DB_ENGINE:-django.db.backends.postgresql}
     volumes:
       - ./openimis-be_py/:/openimis-be/
       - ./modules/:/modules/
@@ -15,9 +16,3 @@ services:
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
-  gateway:
-    healthcheck:
-      test: curl -f http://localhost
-      interval: 10s
-      timeout: 3s
-      retries: 5

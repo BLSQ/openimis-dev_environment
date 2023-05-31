@@ -1,3 +1,5 @@
-FROM ORIGIN
-
-RUN apt-get install -y -f postgresql-client
+FROM origin
+ARG DB_ENGINE
+RUN test "$DB_ENGINE" = "django.db.backends.postgresql" && apt-get install -y -f postgresql-client  || :
+RUN pip install --upgrade pip
+RUN pip install ipython
