@@ -16,6 +16,7 @@ function usage() {
   COMMANDS:
 
   bootstrap       bootstraps the development environment.
+  compose <args>  runs any Docker compose command.
   db  [name]      sets and uses the database type (restart if running) or gets
                   it if nothing passed.
                   possible values: ${VALID_DATABASES}
@@ -620,6 +621,10 @@ case "$1" in
 "modules")
   echo "Known modules for the OpenIMIS backend:"
   list_modules
+  ;;
+"compose")
+  shift
+  dckr-compose "$@"
   ;;
 *)
   usage
