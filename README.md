@@ -29,6 +29,7 @@ One tool is provided to manage, runs, and uses the dev environment: `run.sh`
   db  [name]      sets and uses the database type (restart if running) or gets
                   it if nothing passed.
                   possible values: ${VALID_DATABASES}
+  dbshell         runs an interactive shell in the running db.
   default [name]  sets the default service to interact with (shell) or gets it
                   if nothing passed.
   disable <name>  disables a given service (backend and db can't be disabled).
@@ -42,6 +43,7 @@ One tool is provided to manage, runs, and uses the dev environment: `run.sh`
   refresh <name>  refreshes a service by rebuilding its image and (re)starting
                   it.
   server          runs the backend server in background.
+  servershell     runs an interactive python shell with the backend server.
   settings        reads current settings if any.
   shell [name]    runs an interactive shell on the given service or the default
                   one if nothing passed.
