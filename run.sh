@@ -618,7 +618,7 @@ case "$1" in
     dckr-compose exec -d backend bash -c "${DJANGO_MIGRATION_COMMAND} &> /proc/1/fd/1"
   fi
 
-  if dckr-compose exec -d backend bash -c "export LOGGING_LEVEL=DEBUG;export DJANGO_LOG_HANDLER=console;export SCHEDULER_AUTOSTART=True; ${DJANGO_SERVER_COMMAND} 0.0.0.0:8000 &> /proc/1/fd/1"; then
+  if dckr-compose exec -d backend bash -c "export DEBUG=True;export LOGGING_LEVEL=DEBUG;export DJANGO_LOG_HANDLER=console;export SCHEDULER_AUTOSTART=True; ${DJANGO_SERVER_COMMAND} 0.0.0.0:8000 &> /proc/1/fd/1"; then
     echo "OK"
   else
     echo "KO"
