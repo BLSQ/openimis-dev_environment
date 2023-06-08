@@ -306,14 +306,18 @@ function contains() {
 }
 
 function download_mssql_scripts() {
-  [[ -d "${SCRIPT_DIR}/database_ms_sqlserver" ]] ||
+  if [[ -d "${SCRIPT_DIR}/database_ms_sqlserver/.git" ]]; then
+    git pull
+  else
     git clone https://github.com/openimis/database_ms_sqlserver.git "${SCRIPT_DIR}/database_ms_sqlserver/"
+  fi
   (
     cd "${SCRIPT_DIR}/database_ms_sqlserver/" || {
       echo "The directory \`database_ms_sqlserver\` is unexpectedly absent. This probably means the cloning of the Git repository \`https://github.com/openimis/database_ms_sqlserver\` has failed."
       exit 1
     }
     git checkout develop
+    rm -Rvf output/
     bash ./concatenate_files.sh
   )
   (
@@ -423,7 +427,7 @@ case "$1" in
       "/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -Q \"DROP DATABASE IF EXISTS $TEST_DB; CREATE DATABASE $TEST_DB;\"; /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -d $TEST_DB -Q \"EXEC sp_changedbowner '\$DB_USER'\"; /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -d master -Q \"GRANT CREATE ANY DATABASE TO \$DB_USER\";"
     echo " demo"
     dckr-compose exec db bash -c \
-      "/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -Q \"DROP DATABASE IF EXISTS \$DB_NAME; CREATE DATABASE \$DB_NAME;\"; /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -Q \"USE \$DB_NAME; EXEC sp_changedbowner '\$DB_USER'\"; /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -i /database_ms_sqlserver/output/fullDemoDatabase.sql -d \$DB_NAME | grep . | uniq -c"
+      "/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -Q \"USE MASTER; ALTER DATABASE \$DB_NAME SET single_user WITH ROLLBACK immediate; DROP DATABASE IF EXISTS \$DB_NAME; CREATE DATABASE \$DB_NAME;\"; /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -Q \"USE \$DB_NAME; EXEC sp_changedbowner '\$DB_USER'\"; /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P \$SA_PASSWORD -i /database_ms_sqlserver/output/fullDemoDatabase.sql -d \$DB_NAME | grep . | uniq -c"
     ;;
   esac
   echo "Running migration on demo db"
@@ -618,7 +622,7 @@ case "$1" in
     dckr-compose exec -d backend bash -c "${DJANGO_MIGRATION_COMMAND} &> /proc/1/fd/1"
   fi
 
-  if dckr-compose exec -d backend bash -c "export DEBUG=True;export LOGGING_LEVEL=DEBUG;export DJANGO_LOG_HANDLER=console;export SCHEDULER_AUTOSTART=True; ${DJANGO_SERVER_COMMAND} 0.0.0.0:8000 &> /proc/1/fd/1"; then
+  if dckr-compose exec -d backend bash -c "export DEBUG=True;export LOGGING_LEVEL=DEBUG;export DJANGO_LOG_HANDLER=console;export SCHEDULER_AUTOSTART=False; ${DJANGO_SERVER_COMMAND} 0.0.0.0:8000 &> /proc/1/fd/1"; then
     echo "OK"
   else
     echo "KO"

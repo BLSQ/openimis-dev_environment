@@ -10,6 +10,7 @@ services:
       - ./openimis-be_py/:/openimis-be/
       - ./modules/:/modules/
     entrypoint: ["tail", "-f", "/dev/null"]
+    command: ""
   restapi:
     environment:
       - DB_HOST=${DB_HOST}

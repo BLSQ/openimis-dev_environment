@@ -28,7 +28,7 @@ One tool is provided to manage, runs, and uses the dev environment: `run.sh`
   compose <args>  runs any Docker compose command.
   db  [name]      sets and uses the database type (restart if running) or gets
                   it if nothing passed.
-                  possible values: ${VALID_DATABASES}
+                  possible values: pgsql,mssql
   dbshell         runs an interactive shell in the running db.
   default [name]  sets the default service to interact with (shell) or gets it
                   if nothing passed.

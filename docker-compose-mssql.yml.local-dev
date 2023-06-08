@@ -1,7 +1,6 @@
 version: "2.4"
 services:
   db:
-    image: ${PROJECT_NAME:-openimis}/db:demo-mssql
     volumes:
       - ./database_ms_sqlserver/:/database_ms_sqlserver/
   restapi:
