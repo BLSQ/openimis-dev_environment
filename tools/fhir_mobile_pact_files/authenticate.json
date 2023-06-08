@@ -1,8 +1,4 @@
 {
-    "query": "mutation authenticate($username: String!, $password: String!) {tokenAuth(username: $username, password: $password) {refreshExpiresIn}}",
-    "variables":
-    {
-        "username": "Admin",
-        "password": "admin123"
-    }
+    "username": "Admin",
+    "password": "admin123"
 }
