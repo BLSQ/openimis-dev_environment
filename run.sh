@@ -68,6 +68,8 @@ function load_settings() {
 function save_settings() {
   local settings=$1
 
+  touch "${SETTINGS_FILE}"
+
   [[ ! -w $SETTINGS_FILE ]] && {
     echo "The settings file \`${SETTINGS_FILE}\` is not writable. Its current permission is"
     echo "\`$(stat -c'%A %U %G' "${SETTINGS_FILE}")\`. If you have the rights, you can make it"
