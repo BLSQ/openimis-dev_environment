@@ -66,11 +66,11 @@ echo " UP!"
 
 # login and retrieve JWT
 echo "login"
-# curl -ksX POST "${URL_ROOT}/api/graphql" \
-#   -H "accept: application/json" \
-#   -H "Content-Type: application/json" \
-#   -c "${COOKIE_FILE}" \
-#   -d @"${SCRIPT_DIR}/fhir_mobile_pact_files/authenticate.json.graphql"
+
+curl -ksX POST "${URL_ROOT}/api/graphql" \
+  -H "accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d @"${SCRIPT_DIR}/fhir_mobile_pact_files/authenticate-graphql.json" &>/dev/null
 
 token=$(
   curl -ksX POST "${URL_ROOT}/api/api_fhir_r4/login/" \
@@ -78,6 +78,16 @@ token=$(
     -H "Content-Type: application/json" \
     -d @"${SCRIPT_DIR}/fhir_mobile_pact_files/authenticate.json" | jq -r '.token'
 )
+
+[[ -z $token ]] && {
+  echo "Login Failed. Either the Django bakcend service hasn't yet completely"
+  echo "boot up or there is something wrong. Please check the status of your"
+  echo "environment with \`./run.sh status\`. If everything is ok, check the"
+  echo "log of the backend with \`./run.sh logs\` (if you add the option \`-f\`"
+  echo "it'll stream the log in the stdout). It is ready when you see the"
+  echo "following line: \"daphne.server: Listening on TCP address 0.0.0.0:8000\"."
+  exit 1
+}
 
 # nothin similar to `claim/Controls`
 
