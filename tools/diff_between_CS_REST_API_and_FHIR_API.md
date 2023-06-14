@@ -32,7 +32,7 @@ In return, you receive the JWT in a JSON HTTP response:
 The token is then passed in the following HTTP header
 `Authorization: Bearer <token>` to HTTP request protected endpoints.
 
-### FHIR API
+### GraphQL
 
 It's a POST HTTP request at `/api/graphql` with:
 
@@ -42,7 +42,7 @@ It's a POST HTTP request at `/api/graphql` with:
     "variables":
     {
         "username": "<USERNAME>",
-        "password": "<PASSWORD"
+        "password": "<PASSWORD>"
     }
 }
 ```
@@ -50,6 +50,26 @@ It's a POST HTTP request at `/api/graphql` with:
 In return, you receive the JWT in a cookie with `JWT-refresh-token` and `JWT`.
 The session is then saved in the cookie, and the cookie has to be used to
 HTTP request protected endpoints, including the FHIR ones.
+
+### FHIR API
+
+It's a POST HTTP request at `/api/api_fhir_r4/` with:
+
+```json
+{
+    "username": "<USERNAME>",
+    "password": "<PASSWORD>"
+}
+```
+
+In return, you receive the JWT in a JSON HTTP response:
+
+```json
+{"token":"<TOKEN>","exp":1686830552}
+```
+
+The token is then passed in the following HTTP header
+`Authorization: Bearer <token>` to HTTP request protected endpoints.
 
 ## Claim administrators / Practitioners
 
@@ -178,7 +198,7 @@ We can do the following mapping:
 | ----------- | -------- |
 | `.claim_admins[0].lastName` | `.entry[0].resource.name[0].family` |
 | `.claim_admins[0].otherNames` | `.entry[0].resource.name[0].given` |
-| `.claim_admins[0].claimAdminCode` | `.entry[0].resource.identifier[] | select(.type.coding[].code == "Code") | .value` |
+| `.claim_admins[0].claimAdminCode` | `.entry[0].resource.identifier[] \| select(.type.coding[].code == "Code") \| .value` |
 | `.claim_admins[0].hfCode` | Not Found |
 
 ## Controls
@@ -722,12 +742,12 @@ We can do the following mapping:
 | ----------- | -------- |
 | `.diagnoses[0].code` | Diagnosis - `.concept[0].code` |
 | `.diagnoses[0].name` | Diagnosis - `.concept[0].display` |
-| `.services[0].code` | ActivityDefinition - `.entry[0].resource.identifier[] | select(.type.coding[].code == "Code" ).value` |
+| `.services[0].code` | ActivityDefinition - `.entry[0].resource.identifier[] \| select(.type.coding[].code == "Code" ).value` |
 | `.services[0].name` | ActivityDefinition - `.entry[0].title` |
-| `.services[0].price` | ActivityDefinition - `.entry[0].resource.extension[] | select(.url | test("unit-price")).valueMoney.value` |
-| `.items[0].code` | Medication - `.entry[0].resource.identifier[] | select(.type.coding[].code == "Code" ).value` |
+| `.services[0].price` | ActivityDefinition - `.entry[0].resource.extension[] \| select(.url \| test("unit-price")).valueMoney.value` |
+| `.items[0].code` | Medication - `.entry[0].resource.identifier[] \| select(.type.coding[].code == "Code" ).value` |
 | `.items[0].name` | Medication - `.entry[0].resource.code.text` |
-| `.items[0].price` | Medication - `.entry[0].resource.extension[] | select(.url | test("unit-price")).valueMoney.value` |
+| `.items[0].price` | Medication - `.entry[0].resource.extension[] \| select(.url \| test("unit-price")).valueMoney.value` |
 
 ## Payment List
 
@@ -1348,7 +1368,7 @@ We can do the following mapping:
 | `.data[0].insurance_number` | None (maybe through patient link `.entry[0].resource.patient.reference`) |
 | `.data[0].patient_name` | None (maybe through patient link `.entry[0].resource.patient.reference`) |
 | `.data[0].main_dg` | None |
-| `.data[0].claim_number` | `.entry[0].resource.identifer[] | select(.type.coding[].code == "Code").value` |
+| `.data[0].claim_number` | `.entry[0].resource.identifer[] \| select(.type.coding[].code == "Code").value` |
 | `.data[0].date_claimed` | None |
 | `.data[0].visit_date_from` | None |
 | `.data[0].visit_type` | `.entry[0].resource.type.coding[0].display` |
@@ -1358,16 +1378,16 @@ We can do the following mapping:
 | `.data[0].sec_dg_3` | None |
 | `.data[0].sec_dg_4` | None |
 | `.data[0].visit_date_to` | None |
-| `.data[0].claimed` | `.entry[0].total[] | select(.category.coding[].display == "entered").amount.value` |
+| `.data[0].claimed` | `.entry[0].total[] \| select(.category.coding[].display == "entered").amount.value` |
 | `.data[0].approved` | None (it seems it's done per item |
 | `.data[0].adjusted` | None |
 | `.data[0].explanation` | None |
 | `.data[0].adjustement` | None |
 | `.data[0].guarantee_number` | None |
-| `.data[0].services` | `.entry[0].item[] | select(.extension[].valueReference.display == "I26")` |
+| `.data[0].services` | `.entry[0].item[] \| select(.extension[].valueReference.display == "I26")` |
 | | the link with the service is done via the Activity Definition `.reference` |
 | | the quantity, price, and status can be found in `.adjudication` |
-| `.data[0].items` | `.entry[0].item[] | select(.extension[].valueReference.display == "0182")` |
+| `.data[0].items` | `.entry[0].item[] \| select(.extension[].valueReference.display == "0182")` |
 | | the link with the service is done via the Medication `.reference` |
 | | the quantity, price, and status can be found in `.adjudication` |
 
@@ -1492,3 +1512,761 @@ It's a GET request at `/api/api_fhir_r4/PractitionerRole/`. It returns the follo
     ]
 }
 ```
+
+## Enquire (list)
+
+### C# REST API
+
+It's a GET HTTP request at `/rest/api/insuree/${insuree_chfid}/enquire`. It
+returns a JSON payload that contains the enquire for the given insuree:
+
+```json
+{
+    "details":
+    [
+        {
+            "productName": "Basic Cover Tahida",
+            "expiryDate": "2024-04-19",
+            "status": "A",
+            "dedType": null,
+            "ded1": null,
+            "ded2": null,
+            "ceiling1": null,
+            "ceiling2": null,
+            "productCode": "BCTA0001",
+            "antenatalAmountLeft": null,
+            "consultationAmountLeft": null,
+            "deliveryAmountLeft": null,
+            "hospitalizationAmountLeft": null,
+            "surgeryAmountLeft": null,
+            "totalAdmissionsLeft": null,
+            "totalAntenatalLeft": null,
+            "totalConsultationsLeft": null,
+            "totalDelivieriesLeft": null,
+            "totalSurgeriesLeft": null,
+            "totalVisitsLeft": null,
+            "policyValue": 10000.00,
+            "effectiveDate": "2023-04-20"
+        }
+    ],
+    "chfid": "105000002",
+    "photoPath": "Images/Updated/105000002_E00001_20180327_0.0_0.0.jpg",
+    "insureeName": "Doni Ilina",
+    "dob": "1993-06-09",
+    "gender": "Female",
+    "photoBase64": "",
+    "otherNames": "Doni",
+    "lastName": "Ilina"
+}
+```
+
+### FHIR API
+
+There are 3 resources to call: Patient, Contract, and Coverage.
+
+To retrieve the list of patient, it's GET HTTP request at
+`/api/api_fhir_r4/Patient`. It returns a list:
+
+```json
+[
+    {
+
+        "fullUrl": "https://demo.openimis.org/api/api_fhir_r4/Patient/EDB3F97F-DBCF-4824-B0DD-41F339D857EC",
+        "resource":
+        {
+            "resourceType": "Patient",
+            "id": "EDB3F97F-DBCF-4824-B0DD-41F339D857EC",
+            "extension":
+            [
+                {
+                    "url": "https://openimis.github.io/openimis_fhir_r4_ig/StructureDefinition/patient-is-head",
+                    "valueBoolean": true
+                },
+                {
+                    "url": "https://openimis.github.io/openimis_fhir_r4_ig/StructureDefinition/patient-card-issued",
+                    "valueBoolean": false
+                },
+                {
+                    "url": "https://openimis.github.io/openimis_fhir_r4_ig/StructureDefinition/patient-group-reference",
+                    "valueReference":
+                    {
+                        "reference": "Group/0AE6EED8-9353-42E0-B779-B044A692CB22",
+                        "type": "Group",
+                        "identifier":
+                        {
+                            "type":
+                            {
+                                "coding":
+                                [
+                                    {
+                                        "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                                        "code": "UUID"
+                                    }
+                                ]
+                            },
+                            "value": "0AE6EED8-9353-42E0-B779-B044A692CB22"
+                        }
+                    }
+                }
+            ],
+            "identifier":
+            [
+                {
+                    "type":
+                    {
+                        "coding":
+                        [
+                            {
+                                "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                                "code": "UUID"
+                            }
+                        ]
+                    },
+                    "value": "EDB3F97F-DBCF-4824-B0DD-41F339D857EC"
+                },
+                {
+                    "type":
+                    {
+                        "coding":
+                        [
+                            {
+                                "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                                "code": "Code"
+                            }
+                        ]
+                    },
+                    "value": "10500001"
+                }
+            ],
+            "name":
+            [
+                {
+                    "use": "usual",
+                    "family": "Ilina",
+                    "given":
+                    [
+                        "Ethu"
+                    ]
+                }
+            ],
+            "telecom":
+            [
+                {
+                    "system": "email",
+                    "value": "                                                                                                    ",
+                    "use": "home"
+                }
+            ],
+            "gender": "female",
+            "birthDate": "1988-07-10",
+            "address":
+            [
+                {
+                    "extension":
+                    [
+                        {
+                            "url": "https://openimis.github.io/openimis_fhir_r4_ig/StructureDefinition/address-municipality",
+                            "valueString": "Majhi"
+                        },
+                        {
+                            "url": "https://openimis.github.io/openimis_fhir_r4_ig/StructureDefinition/address-location-reference",
+                            "valueReference":
+                            {
+                                "reference": "Location/FCEFC704-229F-4561-A8A8-590A01523BE3",
+                                "type": "Location",
+                                "identifier":
+                                {
+                                    "type":
+                                    {
+                                        "coding":
+                                        [
+                                            {
+                                                "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                                                "code": "UUID"
+                                            }
+                                        ]
+                                    },
+                                    "value": "FCEFC704-229F-4561-A8A8-590A01523BE3"
+                                }
+                            }
+                        }
+                    ],
+                    "use": "home",
+                    "type": "physical",
+                    "city": "Radho",
+                    "district": "Vida",
+                    "state": "Tahida"
+                }
+            ],
+            "photo":
+            [
+                {
+                    "contentType": "jpg",
+                    "url": "http://demo.openimis.org/photo/Images/Updated//10500001_E00001_20180327_0.0_0.0.jpg",
+                    "title": "10500001_E00001_20180327_0.0_0.0.jpg",
+                    "creation": "2018-03-27"
+                }
+            ]
+        }
+    },
+    {
+
+        "fullUrl": "https://demo.openimis.org/api/api_fhir_r4/Patient/CAAA21A5-42A3-4BC0-9DA2-E7951B283307",
+        "resource":
+        {
+            "resourceType": "Patient",
+            "id": "CAAA21A5-42A3-4BC0-9DA2-E7951B283307",
+            "extension":
+            [
+                {
+                    "url": "https://openimis.github.io/openimis_fhir_r4_ig/StructureDefinition/patient-is-head",
+                    "valueBoolean": false
+                },
+                {
+                    "url": "https://openimis.github.io/openimis_fhir_r4_ig/StructureDefinition/patient-card-issued",
+                    "valueBoolean": false
+                },
+                {
+                    "url": "https://openimis.github.io/openimis_fhir_r4_ig/StructureDefinition/patient-group-reference",
+                    "valueReference":
+                    {
+                        "reference": "Group/0AE6EED8-9353-42E0-B779-B044A692CB22",
+                        "type": "Group",
+                        "identifier":
+                        {
+                            "type":
+                            {
+                                "coding":
+                                [
+                                    {
+                                        "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                                        "code": "UUID"
+                                    }
+                                ]
+                            },
+                            "value": "0AE6EED8-9353-42E0-B779-B044A692CB22"
+                        }
+                    }
+                }
+            ],
+            "identifier":
+            [
+                {
+                    "type":
+                    {
+                        "coding":
+                        [
+                            {
+                                "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                                "code": "UUID"
+                            }
+                        ]
+                    },
+                    "value": "CAAA21A5-42A3-4BC0-9DA2-E7951B283307"
+                },
+                {
+                    "type":
+                    {
+                        "coding":
+                        [
+                            {
+                                "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                                "code": "Code"
+                            }
+                        ]
+                    },
+                    "value": "105000002"
+                }
+            ],
+            "name":
+            [
+                {
+                    "use": "usual",
+                    "family": "Ilina",
+                    "given":
+                    [
+                        "Doni"
+                    ]
+                }
+            ],
+            "gender": "female",
+            "birthDate": "1993-06-09",
+            "address":
+            [
+                {
+                    "extension":
+                    [
+                        {
+                            "url": "https://openimis.github.io/openimis_fhir_r4_ig/StructureDefinition/address-municipality",
+                            "valueString": "Majhi"
+                        },
+                        {
+                            "url": "https://openimis.github.io/openimis_fhir_r4_ig/StructureDefinition/address-location-reference",
+                            "valueReference":
+                            {
+                                "reference": "Location/FCEFC704-229F-4561-A8A8-590A01523BE3",
+                                "type": "Location",
+                                "identifier":
+                                {
+                                    "type":
+                                    {
+                                        "coding":
+                                        [
+                                            {
+                                                "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                                                "code": "UUID"
+                                            }
+                                        ]
+                                    },
+                                    "value": "FCEFC704-229F-4561-A8A8-590A01523BE3"
+                                }
+                            }
+                        }
+                    ],
+                    "use": "home",
+                    "type": "physical",
+                    "city": "Radho",
+                    "district": "Vida",
+                    "state": "Tahida"
+                }
+            ],
+            "photo":
+            [
+                {
+                    "contentType": "jpg",
+                    "url": "http://demo.openimis.org/photo/Images/Updated//105000002_E00001_20180327_0.0_0.0.jpg",
+                    "title": "105000002_E00001_20180327_0.0_0.0.jpg",
+                    "creation": "2018-03-27"
+                }
+            ]
+        }
+    
+    }
+]
+```
+
+To retrieve the list of contract, it's GET HTTP request at
+`/api/api_fhir_r4/Contract`. It returns a list:
+
+```json
+{
+    "resource":
+    {
+        "resourceType": "Contract",
+        "identifier":
+        [
+            {
+                "type":
+                {
+                    "coding":
+                    [
+                        {
+                            "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                            "code": "UUID"
+                        }
+                    ]
+                },
+                "value": "D593E2B6-449A-42B6-A4FC-FEAED7026696"
+            },
+            {
+                "type":
+                {
+                    "coding":
+                    [
+                        {
+                            "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                            "code": "ACSN"
+                        }
+                    ]
+                },
+                "value": "32"
+            }
+        ],
+        "status": "Policy",
+        "legalState":
+        {
+            "text": "Offered"
+        },
+        "subject":
+        [
+            {
+                "reference": "Group/0AE6EED8-9353-42E0-B779-B044A692CB22",
+                "type": "Group",
+                "identifier":
+                {
+                    "type":
+                    {
+                        "coding":
+                        [
+                            {
+                                "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                                "code": "UUID"
+                            }
+                        ]
+                    },
+                    "value": "0AE6EED8-9353-42E0-B779-B044A692CB22"
+                },
+                "display": "Ilina"
+            }
+        ],
+        "author":
+        {
+            "reference": "Practitioner/5739BC5A-2956-434A-81A9-6D7B6E24D101",
+            "type": "Practitioner",
+            "identifier":
+            {
+                "type":
+                {
+                    "coding":
+                    [
+                        {
+                            "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                            "code": "UUID"
+                        }
+                    ]
+                },
+                "value": "5739BC5A-2956-434A-81A9-6D7B6E24D101"
+            },
+            "display": "E00006"
+        },
+        "scope":
+        {
+            "coding":
+            [
+                {
+                    "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/contract-scope",
+                    "code": "informal",
+                    "display": "Informal Sector"
+                }
+            ]
+        },
+        "term":
+        [
+            {
+                "offer":
+                {
+                    "party":
+                    [
+                        {
+                            "reference":
+                            [
+                                {
+                                    "reference": "Patient/EDB3F97F-DBCF-4824-B0DD-41F339D857EC",
+                                    "type": "Patient",
+                                    "identifier":
+                                    {
+                                        "type":
+                                        {
+                                            "coding":
+                                            [
+                                                {
+                                                    "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                                                    "code": "UUID"
+                                                }
+                                            ]
+                                        },
+                                        "value": "EDB3F97F-DBCF-4824-B0DD-41F339D857EC"
+                                    }
+                                }
+                            ],
+                            "role":
+                            {
+                                "coding":
+                                [
+                                    {
+                                        "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/contract-resource-party-role",
+                                        "code": "beneficiary",
+                                        "display": "Beneficiary"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "asset":
+                [
+                    {
+                        "extension":
+                        [
+                            {
+                                "extension":
+                                [
+                                    {
+                                        "url": "payer",
+                                        "valueCodeableConcept":
+                                        {
+                                            "coding":
+                                            [
+                                                {
+                                                    "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/contract-premium-payer",
+                                                    "code": "beneficiary",
+                                                    "display": "Beneficiary"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "url": "category",
+                                        "valueCodeableConcept":
+                                        {
+                                            "coding":
+                                            [
+                                                {
+                                                    "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/contract-premium-category",
+                                                    "code": "C",
+                                                    "display": "Contribution and Others"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "url": "amount",
+                                        "valueMoney":
+                                        {
+                                            "value": 10000.0,
+                                            "currency": "$"
+                                        }
+                                    },
+                                    {
+                                        "url": "receipt",
+                                        "valueString": "RE6252"
+                                    },
+                                    {
+                                        "url": "date",
+                                        "valueDate": "2023-05-20"
+                                    },
+                                    {
+                                        "url": "type",
+                                        "valueCodeableConcept":
+                                        {
+                                            "coding":
+                                            [
+                                                {
+                                                    "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/contract-premium-type",
+                                                    "code": "C",
+                                                    "display": "Cash"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ],
+                                "url": "https://openimis.github.io/openimis_fhir_r4_ig/StructureDefinition/contract-premium"
+                            }
+                        ],
+                        "typeReference":
+                        [
+                            {
+                                "reference": "Patient/EDB3F97F-DBCF-4824-B0DD-41F339D857EC",
+                                "type": "Patient",
+                                "identifier":
+                                {
+                                    "type":
+                                    {
+                                        "coding":
+                                        [
+                                            {
+                                                "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                                                "code": "UUID"
+                                            }
+                                        ]
+                                    },
+                                    "value": "EDB3F97F-DBCF-4824-B0DD-41F339D857EC"
+                                },
+                                "display": "10500001"
+                            },
+                            {
+                                "reference": "Patient/CAAA21A5-42A3-4BC0-9DA2-E7951B283307",
+                                "type": "Patient",
+                                "identifier":
+                                {
+                                    "type":
+                                    {
+                                        "coding":
+                                        [
+                                            {
+                                                "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                                                "code": "UUID"
+                                            }
+                                        ]
+                                    },
+                                    "value": "CAAA21A5-42A3-4BC0-9DA2-E7951B283307"
+                                },
+                                "display": "105000002"
+                            }
+                        ],
+                        "period":
+                        [
+                            {
+                                "start": "2023-05-20",
+                                "end": "2024-05-19"
+                            }
+                        ],
+                        "usePeriod":
+                        [
+                            {
+                                "start": "2023-05-20",
+                                "end": "2024-05-19"
+                            }
+                        ],
+                        "valuedItem":
+                        [
+                            {
+                                "entityReference":
+                                {
+                                    "reference": "InsurancePlan/C536D810-B66F-4ECC-B97F-BD004DACD108",
+                                    "type": "InsurancePlan",
+                                    "identifier":
+                                    {
+                                        "type":
+                                        {
+                                            "coding":
+                                            [
+                                                {
+                                                    "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                                                    "code": "UUID"
+                                                }
+                                            ]
+                                        },
+                                        "value": "C536D810-B66F-4ECC-B97F-BD004DACD108"
+                                    },
+                                    "display": "BCTA0001"
+                                },
+                                "net":
+                                {
+                                    "value": 10000.0
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}
+```
+
+To retrieve the list of coverage, it's GET HTTP request at
+`/api/api_fhir_r4/Coverage`. It returns a list:
+
+```json
+{
+    "resource":
+    {
+        "resourceType": "Coverage",
+        "extension":
+        [
+            {
+                "url": "https://openimis.github.io/openimis_fhir_r4_ig//StructureDefinition/coverage-date",
+                "valueDate": "2023-05-20"
+            },
+            {
+                "url": "https://openimis.github.io/openimis_fhir_r4_ig//StructureDefinition/coverage-date",
+                "valueDate": "2023-05-20"
+            }
+        ],
+        "identifier":
+        [
+            {
+                "type":
+                {
+                    "coding":
+                    [
+                        {
+                            "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                            "code": "UUID"
+                        }
+                    ]
+                },
+                "value": "D593E2B6-449A-42B6-A4FC-FEAED7026696"
+            },
+            {
+                "type":
+                {
+                    "coding":
+                    [
+                        {
+                            "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                            "code": "ACSN"
+                        }
+                    ]
+                },
+                "value": "32"
+            }
+        ],
+        "status": "active",
+        "policyHolder":
+        {
+            "reference": "Patient/10500001"
+        },
+        "beneficiary":
+        {
+            "reference": "Patient/10500001"
+        },
+        "period":
+        {
+            "start": "2023-05-20",
+            "end": "2024-05-19"
+        },
+        "payor":
+        [
+            {
+                "reference": "Patient/10500001"
+            }
+        ],
+        "class":
+        [
+            {
+                "type":
+                {
+                    "coding":
+                    [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                            "code": "plan",
+                            "display": "Plan"
+                        }
+                    ]
+                },
+                "value": "BCTA0001",
+                "name": "Basic Cover Tahida"
+            }
+        ]
+    }
+}
+```
+
+### Mapping
+
+| C# REST API | FHIR API |
+| ----------- | -------- |
+| `.details[0].productName` | Coverage `.entry[0].resource.class[0].name` |
+| `.details[0].productCode` | Coverage `.entry[0].resource.class[0].value` & Contract (in `.asset`) |
+| `.details[0].expiryDate` | Coverage `.entry[0].resource.period.end` & Contract (but one month later, so probably a bug) |
+| `.details[0].effectiveDate` | Coverage `.entry[0].resource.period.start` & Contract (but one month later, so probably a bug) |
+| `.details[0].status` | Coverage `.entry[0].resource.status` (to confirm, not sure)|
+| `.details[0].policyValue` | Contract in `.asset` there is a `.valueMoney`|
+| `.details[0].dedType` | not found so far |
+| `.details[0].ded1` | not found so far  |
+| `.details[0].ded2` | not found so far |
+| `.details[0].ceiling1` | not found so far |
+| `.details[0].ceiling2` | not found so far |
+| `.details[0].productCode` | not found so far |
+| `.details[0].antenatalAmountLeft` | not found so far |
+| `.details[0].consultationAmountLeft` | not found so far |
+| `.details[0].deliveryAmountLeft` | not found so far |
+| `.details[0].hospitalizationAmountLeft` | not found so far |
+| `.details[0].surgeryAmountLeft` | not found so far |
+| `.details[0].totalAdmissionsLeft` | not found so far |
+| `.details[0].totalAntenatalLeft` | not found so far |
+| `.details[0].totalConsultationsLeft` | not found so far |
+| `.details[0].totalDelivieriesLeft` | not found so far |
+| `.details[0].totalSurgeriesLeft` | not found so far |
+| `.details[0].totalVisitsLeft` | not found so far |
+| `.chfid` | Patient `.entry[0].resource.identifier \| select(.type.coding[].code == "Code") \| .value`, but also in Contract in `.asset` |
+| `.photoPath` | Patient `.entry[0].resource.photo[0]` gives you an URL and a filename |
+| `.insureeName` | Patient `.entry[0].resource.name[0].family` and `.entry[0].resource.name[0].given[0]` |
+| `.dob` | Patient `.entry[0].resource.birthDate` |
+| `.gender` | Patient `.entry[0].resource.gender` |
+| `.photoBase64` | none |
+| `.otherNames` | Patient `.entry[0].resource.name[0].given[0]`|
+| `.lastName` | Patient `.entry[0].resource.name[0].family`|

@@ -89,12 +89,12 @@ token=$(
   exit 1
 }
 
-# nothin similar to `claim/Controls`
+# nothing similar to `claim/Controls`
 
 # https://openimis.atlassian.net/wiki/spaces/OP/pages/1389592716/FHIR+R4+-+Practitioner
 # similar to `claim/GetClaimAdmins` (not directly used in claim mobile app)
 paginated_get_curl "get practitioners (claim admins)" \
-  "${URL_ROOT}/api/api_fhir_r4/Practitioner/" \
+  "${URL_ROOT}/api/api_fhir_r4/Practitioner/?resourceType=ca" \
   "claim_admins" "${token}"
 
 # https://fhir.openimis.org/CodeSystem-diagnosis-ICD10-level1.html
@@ -111,7 +111,7 @@ curl -ksX GET "${URL_ROOT}/api/api_fhir_r4/CodeSystem/diagnosis/" \
 # `claim/GetPaymentLists`
 
 paginated_get_curl "get services (diagnoses services items and payment list)" \
-  "${URL_ROOT}/api/api_fhir_r4/ActivityDefinition/" \
+  "${URL_ROOT}/api/api_fhir_r4/ActivityDefinition/?_lastUpdated=lt2023-06-13T00:00:00" \
   "claim_services" "${token}"
 
 # https://openimis.atlassian.net/wiki/spaces/OP/pages/1400045588/FHIR+R4+-+Medication
@@ -119,15 +119,22 @@ paginated_get_curl "get services (diagnoses services items and payment list)" \
 # `claim/GetPaymentLists`
 
 paginated_get_curl "get medications (diagnoses services items and payment list):" \
-  "${URL_ROOT}/api/api_fhir_r4/Medication/" \
+  "${URL_ROOT}/api/api_fhir_r4/Medication/?_lastUpdated=lt2023-06-13T00:00:00" \
   "claim_medications" "${token}"
 
 # https://openimis.atlassian.net/wiki/spaces/OP/pages/1389592652/FHIR+R4+-+ClaimResponse
 # similar to `${URL_ROOT}/api/claim/GetClaims` list or get on a given id
 
-paginated_get_curl "get claims:" \
-  "${URL_ROOT}/api/api_fhir_r4/ClaimResponse/" \
+paginated_get_curl "get claim responses:" \
+  "${URL_ROOT}/api/api_fhir_r4/ClaimResponse/?_lastUpdated=lt2023-06-13T00:00:00" \
   "claim_responses" "${token}"
+
+paginated_get_curl "get claims:" \
+  "${URL_ROOT}/api/api_fhir_r4/Claim/?_lastUpdated=lt2023-06-13T00:00:00&refDate=2019-04-22&contained=True" \
+  "claim" "${token}"
+
+# "${URL_ROOT}/api/api_fhir_r4/Claim/E84A3FCE-9BC2-4968-A2D2-BCFAE03B0430/" \
+# "${URL_ROOT}/api/api_fhir_r4/Claim/?patient=CAAA21A5-42A3-4BC0-9DA2-E7951B283307" \
 
 # https://www.hl7.org/fhir/organization.html
 # to retrieve health facilities (not directly used in claim mobile app)
@@ -140,24 +147,24 @@ paginated_get_curl "get organizations (health facilities):" \
 # Neeeded to link practitioner to their organization
 paginated_get_curl "get practitioner roles" \
   "${URL_ROOT}/api/api_fhir_r4/PractitionerRole/" \
-  "claim_pracitioner_roles" "${token}"
+  "claim_practitioner_roles" "${token}"
 
 # https://openimis.atlassian.net/wiki/spaces/OP/pages/1389133931/FHIR+R4+-+Patient
 # similar to `insuree/{chfid}` but list or direct ID
 
-echo "get patients (insuree)"
-curl -ksX GET "${URL_ROOT}/api/api_fhir_r4/Patient/" \
-  -H "Authorization: Bearer ${token}" \
-  -H "accept: application/json" \
-  -H "Content-Type: application/json" \
-  -o "${SESSION_DIR}/claim_patients.json" >/dev/null
+paginated_get_curl "get patients (insuree)" \
+  "${URL_ROOT}/api/api_fhir_r4/Patient/" \
+  "patients" "${token}"
 
 # https://openimis.atlassian.net/wiki/spaces/OP/pages/1389297783/FHIR+R4+-+Coverage
-# similar to `insuree/{chfid}/enquire` but list or direct ID
+# part of `insuree/{chfid}/enquire` but list
 
-echo "get coverages (enquire)"
-curl -ksX GET "${URL_ROOT}/api/api_fhir_r4/Coverage/" \
-  -H "Authorization: Bearer ${token}" \
-  -H "accept: application/json" \
-  -H "Content-Type: application/json" \
-  -o "${SESSION_DIR}/claim_coverages.json" >/dev/null
+paginated_get_curl "get coverages (enquire)" \
+  "${URL_ROOT}/api/api_fhir_r4/Coverage/" \
+  "claim_coverages" "${token}"
+
+# https://openimis.atlassian.net/wiki/spaces/OP/pages/1814822920/FHIR+R4+Contract
+# part of `insuree/{chfid}/enquire` but list
+paginated_get_curl "get contracts (enquire)" \
+  "${URL_ROOT}/api/api_fhir_r4/Contract/" \
+  "claim_contracts" "${token}"
