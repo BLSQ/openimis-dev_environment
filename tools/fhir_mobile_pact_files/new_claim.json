@@ -1,0 +1,115 @@
+{
+    "resourceType": "Claim",
+    "billablePeriod": {
+        "end": "2023-06-20",
+        "start": "2023-06-20"
+    },
+    "created": "2023-06-20",
+    "type": {
+        "coding": [
+            {
+                "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem-claim-visit-type.html",
+                "code": "O",
+                "display": "Other"
+            }
+        ]
+    },
+    "identifier": [
+        {
+            "type": {
+                "coding": [
+                    {
+                        "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/openimis-identifiers",
+                        "code": "Code"
+                    }
+                ]
+            },
+            "value": "CLAIM_ID"
+        }
+    ],
+    "diagnosis": [
+        {
+            "sequence": 1,
+            "diagnosisCodeableConcept": {
+                "coding": [
+                    {
+                        "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/diagnosis-ICD10-level1",
+                        "code": "A02"
+                    }
+                ]
+            }
+        }
+    ],
+    "enterer": {
+        "reference": "Practitioner/ENTERER_UUID"
+    },
+    "item": [
+        {
+            "category": {
+                "text": "item"
+            },
+            "extension": [
+                {
+                    "url": "Medication",
+                    "valueReference": {
+                        "reference": "Medication/MEDICATION_UUID"
+                    }
+                }
+            ],
+            "productOrService": {
+                "text": "0182"
+            },
+            "quantity": {
+                "value": 2.0
+            },
+            "sequence": 1,
+            "unitPrice": {
+                "currency": "$",
+                "value": 10.0
+            }
+        },
+        {
+            "category": {
+                "text": "service"
+            },
+            "extension": [
+                {
+                    "url": "ActivityDefinition",
+                    "valueReference": {
+                        "reference": "ActivityDefinition/ACTIVITY_DEFINITION_UUID"
+                    }
+                }
+            ],
+            "productOrService": {
+                "text": "A1"
+            },
+            "quantity": {
+                "value": 1.0
+            },
+            "sequence": 2,
+            "unitPrice": {
+                "currency": "$",
+                "value": 400.0
+            }
+        }
+    ],
+    "patient": {
+        "reference": "Patient/PATIENT_UUID"
+    },
+    "priority": {
+        "coding": [
+            {
+                "code": "normal"
+            }
+        ]
+    },
+    "provider": {
+        "reference": "Organization/PROVIDER_UUID"
+    },
+    "status": "active",
+    "total": {
+        "currency": "$",
+        "value": 1420.0
+    },
+    "use": "claim"
+}

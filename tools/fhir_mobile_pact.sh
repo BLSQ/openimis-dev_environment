@@ -67,10 +67,17 @@ echo " UP!"
 # login and retrieve JWT
 echo "login"
 
+# it seems required to login first with GraphQL
 curl -ksX POST "${URL_ROOT}/api/graphql" \
   -H "accept: application/json" \
   -H "Content-Type: application/json" \
   -d @"${SCRIPT_DIR}/fhir_mobile_pact_files/authenticate-graphql.json" &>/dev/null
+
+# it tests another account
+curl -ksX POST "${URL_ROOT}/api/api_fhir_r4/login/" \
+  -H "accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d @"${SCRIPT_DIR}/fhir_mobile_pact_files/authenticate_JMDP0011.json" &>/dev/null
 
 token=$(
   curl -ksX POST "${URL_ROOT}/api/api_fhir_r4/login/" \
@@ -130,7 +137,7 @@ paginated_get_curl "get claim responses:" \
   "claim_responses" "${token}"
 
 paginated_get_curl "get claims:" \
-  "${URL_ROOT}/api/api_fhir_r4/Claim/?_lastUpdated=lt2023-06-13T00:00:00&refDate=2019-04-22&contained=True" \
+  "${URL_ROOT}/api/api_fhir_r4/Claim/?_lastUpdated=gt2017-01-01T00:00:00&refDate=2019-04-22&contained=True" \
   "claim" "${token}"
 
 # "${URL_ROOT}/api/api_fhir_r4/Claim/E84A3FCE-9BC2-4968-A2D2-BCFAE03B0430/" \
@@ -168,3 +175,48 @@ paginated_get_curl "get coverages (enquire)" \
 paginated_get_curl "get contracts (enquire)" \
   "${URL_ROOT}/api/api_fhir_r4/Contract/" \
   "claim_contracts" "${token}"
+
+if [[ ! -r "${SESSION_DIR}/claim_page1.json" ]]; then
+  echo "The file \`claim_page1.json\` is not readable. It might have been retrieved"
+  echo "earlier. Please check if there was any issue before."
+  exit 1
+fi
+
+if [[ $(jq -r '.entry[0].resource.identifier[1].value' "${SESSION_DIR}/claim_page1.json") != "CIG00001" ]]; then
+  echo "There is been an error when retrieving the list of existing claim. There should"
+  echo "be at least one claim with the identification code \`CIG00001\`. Please check"
+  echo "the file \`claim_page1.json\`."
+  exit 1
+fi
+
+function generate_claim_data() {
+  local enterer patient provider medication activity_definition id
+  enterer=$(jq -r '.entry[0].resource.enterer.identifier.value' "${SESSION_DIR}/claim_page1.json")
+  patient=$(jq -r '.entry[0].resource.patient.identifier.value' "${SESSION_DIR}/claim_page1.json")
+  provider=$(jq -r '.entry[0].resource.provider.identifier.value' "${SESSION_DIR}/claim_page1.json")
+  medication=$(jq -r '.entry[0].resource.item[] | select(.productOrService.text == "0022") | .extension[0].valueReference.identifier.value' "${SESSION_DIR}/claim_page1.json")
+  activity_definition=$(jq -r '.entry[0].resource.item[] | select(.productOrService.text == "A1") | .extension[0].valueReference.identifier.value' "${SESSION_DIR}/claim_page1.json")
+  id=$(jq -r '.entry[].resource.identifier[] | select(.type.coding[0].code == "Code") | .value' "${SESSION_DIR}/claim_page1.json" | grep CIG | uniq | sort | tail -1)
+  id=$(printf 'CIG%05d' $((${id/CIG/} + 1)))
+
+  cat "${SCRIPT_DIR}/fhir_mobile_pact_files/new_claim.json" |
+    sed -e "s/ENTERER_UUID/${enterer}/" \
+      -e "s/PATIENT_UUID/${patient}/" \
+      -e "s/PROVIDER_UUID/${provider}/" \
+      -e "s/MEDICATION_UUID/${medication}/" \
+      -e "s/ACTIVITY_DEFINITION_UUID/${activity_definition}/" \
+      -e "s/CLAIM_ID/${id}/" \
+      >"${SESSION_DIR}/new_claim_post_payload.json"
+}
+
+# https://openimis.atlassian.net/wiki/spaces/OP/pages/1389592619/FHIR+R4+-+Claim
+# create a new claim
+
+generate_claim_data
+
+curl -ksX POST "${URL_ROOT}/api/api_fhir_r4/Claim/" \
+  -H "accept: application/json" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${token}" \
+  -d @"${SESSION_DIR}/new_claim_post_payload.json" \
+  -o "${SESSION_DIR}/new_claim_response.json"
