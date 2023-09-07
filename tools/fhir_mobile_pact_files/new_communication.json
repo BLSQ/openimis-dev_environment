@@ -1,0 +1,94 @@
+{
+   "resourceType":"Communication",
+   "status":"completed",
+   "subject":{
+      "reference":"Patient/PATIENT_UUID"
+   },
+   "about":[
+      {
+         "reference":"Claim/CLAIM_UUID"
+      }
+   ],
+   "payload": [
+    {
+      "extension": [
+        {
+          "url": "https://openimis.github.io/openimis_fhir_r4_ig/StructureDefinition/communication-payload-type",
+          "valueCodeableConcept": {
+            "coding": [
+              {
+                "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/feedback-payload",
+                "code": "CareRendered"
+              }
+            ]
+          }
+        }
+      ],
+      "contentString": "no"
+    },
+    {
+      "extension": [
+        {
+          "url": "https://openimis.github.io/openimis_fhir_r4_ig/StructureDefinition/communication-payload-type",
+          "valueCodeableConcept": {
+            "coding": [
+              {
+                "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/feedback-payload",
+                "code": "PaymentAsked"
+              }
+            ]
+          }
+        }
+      ],
+      "contentString": "no"
+    },
+    {
+      "extension": [
+        {
+          "url": "https://openimis.github.io/openimis_fhir_r4_ig/StructureDefinition/communication-payload-type",
+          "valueCodeableConcept": {
+            "coding": [
+              {
+                "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/feedback-payload",
+                "code": "DrugPrescribed"
+              }
+            ]
+          }
+        }
+      ],
+      "contentString": "no"
+    },
+    {
+      "extension": [
+        {
+          "url": "https://openimis.github.io/openimis_fhir_r4_ig/StructureDefinition/communication-payload-type",
+          "valueCodeableConcept": {
+            "coding": [
+              {
+                "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/feedback-payload",
+                "code": "DrugReceived"
+              }
+            ]
+          }
+        }
+      ],
+      "contentString": "no"
+    },
+    {
+      "extension": [
+        {
+          "url": "https://openimis.github.io/openimis_fhir_r4_ig/StructureDefinition/communication-payload-type",
+          "valueCodeableConcept": {
+            "coding": [
+              {
+                "system": "https://openimis.github.io/openimis_fhir_r4_ig/CodeSystem/feedback-payload",
+                "code": "Asessment"
+              }
+            ]
+          }
+        }
+      ],
+      "contentString": "2"
+    }
+  ]
+}

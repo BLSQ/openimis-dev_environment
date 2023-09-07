@@ -1,10 +1,10 @@
 {
     "resourceType": "Claim",
     "billablePeriod": {
-        "end": "2023-06-20",
-        "start": "2023-06-20"
+        "end": "CREATED_DATE",
+        "start": "CREATED_DATE"
     },
-    "created": "2023-06-20",
+    "created": "CREATED_DATE",
     "type": {
         "coding": [
             {
