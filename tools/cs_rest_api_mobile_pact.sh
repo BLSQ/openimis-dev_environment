@@ -9,8 +9,8 @@ SESSION_DIR="${SCRIPT_DIR}/cs_rest_api_mobile_pact_session"
 [[ ! -d $SESSION_DIR ]] && mkdir "$SESSION_DIR"
 
 # Test if the backend is reachable/available
-
-BASE_URL="http://localhost/rest/api"
+API_URL="http://localhost"
+BASE_URL="${API_URL}/rest/api"
 
 curl -sI "${BASE_URL}/" | grep 502 >/dev/null && {
   echo "C# REST API service is not reachable at localhost:80."
@@ -31,6 +31,115 @@ curl -sX POST "${BASE_URL}/login" \
   -o "${SESSION_DIR}/login_response.json"
 
 token=$(sed -e "s/.*access_token\":\"\(.*\)\",\"expires_on.*/\1/" "${SESSION_DIR}/login_response.json")
+
+echo "get feedback report"
+curl -sX POST "${BASE_URL}/report/feedback" \
+  -H "accept: application/json" \
+  -H "Authorization: Bearer ${token}" \
+  -H "api-version: 3" \
+  -H "Content-Type: application/json" \
+  -d '{  "fromDate": "2017-01-01T01:00:00.00Z",  "toDate": "2023-12-31T23:00:00.000Z"}' \
+  -o "${SESSION_DIR}/report_feedback.json"
+
+echo "get enrollment report"
+curl -sX POST "${BASE_URL}/report/enrolment" \
+  -H "accept: application/json" \
+  -H "Authorization: Bearer ${token}" \
+  -H "api-version: 3" \
+  -H "Content-Type: application/json" \
+  -d '{  "fromDate": "2017-01-01T01:00:00.00Z",  "toDate": "2023-12-31T23:00:00.000Z"}' \
+  -o "${SESSION_DIR}/report_enrolment.json"
+
+echo "get renewal report"
+curl -sX POST "${BASE_URL}/report/renewal" \
+  -H "accept: application/json" \
+  -H "Authorization: Bearer ${token}" \
+  -H "api-version: 3" \
+  -H "Content-Type: application/json" \
+  -d '{  "fromDate": "2017-01-01T01:00:00.00Z",  "toDate": "2023-12-31T23:00:00.000Z"}' \
+  -o "${SESSION_DIR}/report_renewal.json"
+
+echo "get snapshot indicators report"
+curl -sX POST "${BASE_URL}/report/indicators/snapshot" \
+  -H "accept: application/json" \
+  -H "Authorization: Bearer ${token}" \
+  -H "api-version: 3" \
+  -H "Content-Type: application/json" \
+  -d '{  "snapshotDate": "2023-08-18" }' \
+  -o "${SESSION_DIR}/report_snapshot_policies.json"
+
+echo "get cumulative indicators report"
+curl -sX POST "${BASE_URL}/report/indicators/cumulative" \
+  -H "accept: application/json" \
+  -H "Authorization: Bearer ${token}" \
+  -H "api-version: 3" \
+  -H "Content-Type: application/json" \
+  -d '{  "fromDate": "2017-01-01",  "toDate": "2023-12-31"}' \
+  -o "${SESSION_DIR}/report_cumulative_policies.json"
+
+echo "get master data"
+curl -sX GET "${API_URL}/tools/extracts/download_master_data" \
+  -o "${SESSION_DIR}/master_data.zip"
+
+insuree_chfid="105000002"
+echo "get insuree enquire"
+curl -sX GET "${BASE_URL}/insuree/${insuree_chfid}/enquire" \
+  -H "accept: application/json" \
+  -H "Authorization: Bearer ${token}" \
+  -H "api-version: 3" \
+  -o "${SESSION_DIR}/insuree_enquire_${insuree_chfid}.json"
+
+echo "get family"
+curl -sX GET "${BASE_URL}/family/${insuree_chfid}" \
+  -H "accept: application/json" \
+  -H "Authorization: Bearer ${token}" \
+  -H "api-version: 3" \
+  -H "Content-Type: application/json" \
+  -o "${SESSION_DIR}/family.json"
+
+# create family (broken)
+echo "create / modify family (broken)"
+curl -sX POST "${BASE_URL}/family/" \
+  -H "accept: application/json" \
+  -H "Authorization: Bearer ${token}" \
+  -H "api-version: 3" \
+  -H "Content-Type: application/json" \
+  -d @"${SCRIPT_DIR}/cs_rest_api_mobile_pact_files/new_family.json" \
+  -o "${SESSION_DIR}/created_family.json"
+
+curl -sX POST "${BASE_URL}/Locations/GetOfficerVillages" \
+  -H "accept: application/json" \
+  -H "Authorization: Bearer ${token}" \
+  -H "api-version: 3" \
+  -H "Content-Type: application/json" \
+  -d '{"enrollment_officer_code": "E00001"}' \
+  -o "${SESSION_DIR}/officer_villages.json"
+
+echo "create policy renewal"
+curl -sX POST "${BASE_URL}/policy/renew" \
+  -H "accept: application/json" \
+  -H "Authorization: Bearer ${token}" \
+  -H "api-version: 3" \
+  -H "Content-Type: application/json" \
+  -d @"${SCRIPT_DIR}/cs_rest_api_mobile_pact_files/policy_renewal.json" \
+  -o "${SESSION_DIR}/create_policy_renewal.json"
+
+# if you want to get policy renewals for a given officer
+# echo "login with RHOS0012"
+# token_RHOS0012=$(curl -sX POST "${BASE_URL}/login" \
+#   -H "accept: application/json" \
+#   -H "api-version: 3" \
+#   -H "Content-Type: application/json" \
+#   -d '{"userName": "Admin_Fr", "password": "admin123"}' |
+#   sed -e "s/.*access_token\":\"\(.*\)\",\"expires_on.*/\1/")
+
+echo "get policy renewal"
+curl -sX GET "${BASE_URL}/policy" \
+  -H "accept: application/json" \
+  -H "Authorization: Bearer ${token}" \
+  -H "api-version: 3" \
+  -H "Content-Type: application/json" \
+  -o "${SESSION_DIR}/policy.json"
 
 echo "get controls"
 curl -sX GET "${BASE_URL}/claim/Controls" \
