@@ -17,3 +17,12 @@ services:
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
+  superset:
+    container_name: ${PROJECT_NAME:-openimis}-superset
+    build:
+      context: ./superset
+      dockerfile: ./Dockerfile
+    ports:
+      - "8888:8088"
+    networks:
+      openimis-net:

@@ -349,6 +349,7 @@ case "$1" in
     }
     [[ -L openimis-be_py ]] || ln -fs ../openimis-be_py .
     [[ -L modules ]] || ln -fs ../modules .
+    [[ -L superset ]] || ln -fs ../superset .
   )
 
   echo
