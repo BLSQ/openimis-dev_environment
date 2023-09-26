@@ -2,7 +2,7 @@ openimis-dist_dkr
 openimis-be_py
 database_ms_sqlserver
 modules/*/
-Dockerfile
+openimis-be_py/Dockerfile
 openimis-dev.json
 TODO.md
 tools/*_session/*
